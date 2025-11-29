@@ -46,7 +46,9 @@ public class AppointmentServiceImpl implements AppointmentService {
         if (room.getLandlord().getId().equals(tenant.getId())) {
             throw new RuntimeException("Bạn không thể đặt lịch xem phòng của chính mình!");
         }
-
+        if (room.getStatus() == Room.Status.FULL) {
+            throw new RuntimeException("Phòng này hiện đã hết chỗ!");
+        }
         // 3. Tạo Appointment
         Appointment appointment = new Appointment();
         appointment.setTenant(tenant);

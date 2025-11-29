@@ -1,17 +1,5 @@
 package com.smartrental.backend.service.impl;
 
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.stream.Collectors;
-
-import org.locationtech.jts.geom.Coordinate;
-import org.locationtech.jts.geom.GeometryFactory;
-import org.locationtech.jts.geom.Point;
-import org.locationtech.jts.geom.PrecisionModel;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import com.smartrental.backend.dto.request.RoomCreateDTO;
 import com.smartrental.backend.dto.response.RoomResponseDTO;
 import com.smartrental.backend.entity.Room;
@@ -20,8 +8,18 @@ import com.smartrental.backend.mapper.RoomMapper;
 import com.smartrental.backend.repository.RoomRepository;
 import com.smartrental.backend.repository.UserRepository;
 import com.smartrental.backend.service.RoomService;
-
 import lombok.RequiredArgsConstructor;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.Point;
+import org.locationtech.jts.geom.PrecisionModel;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -30,8 +28,7 @@ public class RoomServiceImpl implements RoomService {
     private final RoomRepository roomRepository;
     private final UserRepository userRepository;
     private final RoomMapper roomMapper;
-    
-    // Khởi tạo Factory với SRID 4326 ngay từ đầu
+
     private final GeometryFactory geometryFactory = new GeometryFactory(new PrecisionModel(), 4326);
 
     private User getCurrentUser() {
@@ -49,21 +46,40 @@ public class RoomServiceImpl implements RoomService {
             throw new RuntimeException("Chỉ chủ trọ mới được đăng tin!");
         }
 
-        Room room = roomMapper.toEntity(dto);
-        room.setLandlord(landlord);
-        room.setStatus(Room.Status.ACTIVE);
-        room.setExpirationDate(LocalDateTime.now().plusDays(30));
-
-        // TẠO TỌA ĐỘ (Đã fix lỗi nhờ config properties)
+        // Tạo Point từ tọa độ
         Point point = geometryFactory.createPoint(new Coordinate(dto.getLongitude(), dto.getLatitude()));
-        room.setLocation(point);
+
+        // Map thủ công hoặc dùng Builder để đảm bảo các trường Hybrid được set đúng
+        Room room = Room.builder()
+                .title(dto.getTitle())
+                .description(dto.getDescription())
+                .price(dto.getPrice())
+                .deposit(dto.getDeposit())
+                .area(dto.getArea())
+                .address(dto.getAddress())
+
+                // --- FIELDS HYBRID ---
+                .rentalType(dto.getRentalType())
+                .capacity(dto.getCapacity())
+                .genderConstraint(dto.getGenderConstraint())
+                .currentTenants(0) // Mặc định chưa có ai
+                // ---------------------
+
+                .location(point)
+                .images(dto.getImages())
+                .amenities(dto.getAmenities())
+                .status(Room.Status.ACTIVE)
+                .expirationDate(LocalDateTime.now().plusDays(30))
+                .landlord(landlord)
+                .build();
 
         return roomMapper.toResponse(roomRepository.save(room));
     }
 
-    // ... (Các hàm searchNearby, getMyRooms, deleteRoom giữ nguyên) ...
     @Override
     public List<RoomResponseDTO> searchNearby(double lat, double lng, double radius) {
+        // Lưu ý thứ tự tham số: Repository đang define (lat, lng) nhưng ST_MakePoint cần (lng, lat)
+        // Code Repository của bạn đã đúng logic: ST_MakePoint(:longitude, :latitude)
         List<Room> rooms = roomRepository.findRoomsNearby(lat, lng, radius);
         return rooms.stream().map(roomMapper::toResponse).collect(Collectors.toList());
     }

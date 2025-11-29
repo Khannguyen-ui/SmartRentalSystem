@@ -1,9 +1,9 @@
 package com.smartrental.backend.dto.response;
 
+import com.smartrental.backend.entity.Room;
+import lombok.Data;
 import java.math.BigDecimal;
 import java.util.List;
-
-import lombok.Data;
 
 @Data
 public class RoomResponseDTO {
@@ -14,16 +14,21 @@ public class RoomResponseDTO {
     private BigDecimal deposit;
     private Double area;
     private String address;
-    
-    // Trả về tọa độ số để App hiển thị
+
     private Double latitude;
     private Double longitude;
-    
-    private String gender;
+
+    // --- CẬP NHẬT CHO HYBRID ---
+    private Room.RentalType rentalType;
+    private Integer capacity;
+    private Integer currentTenants; // Để App hiện: "Còn 3/8 chỗ"
+    private Room.GenderConstraint genderConstraint;
+    // ----------------------------
+
     private List<String> images;
     private List<String> amenities;
     private String status;
-    
+
     private String landlordName;
     private String landlordPhone;
 }

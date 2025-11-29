@@ -5,7 +5,6 @@ import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import org.locationtech.jts.geom.Point;
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -18,45 +17,52 @@ import java.util.List;
 @AllArgsConstructor
 public class Room {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
     private String title;
 
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    @Column(nullable = false)
-    private BigDecimal price;
+    private BigDecimal price; // Giá hiển thị
 
-    @Column(nullable = false)
-    private Double area;
+    // --- BỔ SUNG TRƯỜNG BỊ THIẾU ---
+    private BigDecimal deposit; // Tiền cọc
+    // ------------------------------
 
+    private Double area;      // Diện tích
     private String address;
 
-    // --- POSTGIS: Lưu tọa độ ---
-    // SRID 4326 là chuẩn WGS84 (Google Maps)
-    @Column(columnDefinition = "geometry(Point, 4326)")
-    private Point location;
+    // --- CORE HYBRID LOGIC ---
+    @Enumerated(EnumType.STRING)
+    private RentalType rentalType; // WHOLE (Nguyên căn) - SHARED (Ở ghép)
 
-    // --- JSONB: Lưu danh sách ---
+    private Integer capacity; // Tổng chỗ (VD: 1 hoặc 8)
+
+    @Builder.Default
+    private Integer currentTenants = 0; // Số người đang ở
+
+    @Enumerated(EnumType.STRING)
+    private GenderConstraint genderConstraint; // MALE_ONLY, FEMALE_ONLY, MIXED
+    // -------------------------
+
+    // --- GIS & JSON ---
+    @Column(columnDefinition = "geometry(Point, 4326)")
+    private Point location; // Tọa độ bản đồ
+
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
-    private List<String> images; // Tự động map List Java <-> JSON Array
+    private List<String> images;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
     private List<String> amenities;
 
-    // Giới tính cho thuê (MALE, FEMALE, ALL)
-    private String gender;
-
-    private BigDecimal deposit; // Tiền cọc
-
     @Enumerated(EnumType.STRING)
-    private Status status;
+    private Status status; // ACTIVE, FULL, HIDDEN
+
+    private LocalDateTime expirationDate; // Ngày hết hạn tin đăng
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "landlord_id")
@@ -65,17 +71,12 @@ public class Room {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
-    private LocalDateTime expirationDate;
-
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
-        if (status == null) {
-            status = Status.PENDING;
-        }
     }
 
-    public enum Status {
-        PENDING, ACTIVE, RENTED, EXPIRED, HIDDEN
-    }
+    public enum RentalType { WHOLE, SHARED }
+    public enum GenderConstraint { MALE_ONLY, FEMALE_ONLY, MIXED }
+    public enum Status { ACTIVE, FULL, HIDDEN, EXPIRED }
 }
