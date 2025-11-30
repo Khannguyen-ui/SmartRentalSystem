@@ -12,22 +12,21 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        // Endpoint để Client (React Native) kết nối vào
-        // URL: ws://localhost:8080/ws
+        // Endpoint để Client kết nối vào: ws://localhost:8080/ws
         registry.addEndpoint("/ws")
-                .setAllowedOriginPatterns("*")
-                .withSockJS(); // Hỗ trợ fallback
+                .setAllowedOriginPatterns("*") // Cho phép React Native/Web kết nối
+                .withSockJS(); // Fallback nếu không hỗ trợ WS thuần
     }
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
-        // Prefix cho tin nhắn từ Server --> Client
-        registry.enableSimpleBroker("/topic", "/queue");
-
-        // Prefix cho tin nhắn từ Client --> Server
+        // Prefix cho các đường dẫn mà Client muốn gửi tin lên
         registry.setApplicationDestinationPrefixes("/app");
 
-        // Prefix riêng cho tin nhắn cá nhân (1-1)
+        // Prefix cho các đường dẫn mà Client muốn lắng nghe (Subscribe)
+        registry.enableSimpleBroker("/topic", "/queue", "/user");
+
+        // Prefix riêng tư cho từng user
         registry.setUserDestinationPrefix("/user");
     }
 }

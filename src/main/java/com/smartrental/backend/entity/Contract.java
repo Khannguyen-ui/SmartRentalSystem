@@ -7,6 +7,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime; // Đã thêm import này
 import java.util.List;
 
 @Entity
@@ -45,6 +46,17 @@ public class Contract {
 
     @Enumerated(EnumType.STRING)
     private Status status;
+
+    // --- PHẦN BỔ SUNG QUAN TRỌNG ---
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        if (status == null) status = Status.PENDING;
+    }
+    // -------------------------------
 
     public enum Status { PENDING, ACTIVE, EXPIRED, TERMINATED }
 }
