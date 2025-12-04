@@ -15,6 +15,8 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+
 @Service
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
@@ -33,14 +35,20 @@ public class UserServiceImpl implements UserService {
         }
 
         // 2. Convert DTO -> Entity
+        // (Lưu ý: Role đã được map trong UserMapper)
         User user = userMapper.toEntity(registerDTO);
 
         // 3. Mã hóa mật khẩu
         user.setPassword(passwordEncoder.encode(registerDTO.getPassword()));
-        
-        // 4. Set giá trị mặc định
-        user.setWalletBalance(java.math.BigDecimal.ZERO);
+
+        // 4. Set giá trị mặc định cho tài khoản mới
+        user.setWalletBalance(BigDecimal.ZERO);
         user.setKycStatus("UNVERIFIED");
+
+        // Đảm bảo các trường mới là null (tránh lỗi rác)
+        user.setAvatarUrl(null);
+        user.setCitizenImages(null);
+        user.setLifestyleProfile(null);
 
         // 5. Lưu DB
         User savedUser = userRepository.save(user);
@@ -53,10 +61,10 @@ public class UserServiceImpl implements UserService {
         // 1. Xác thực Username/Password
         try {
             authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                    loginDTO.getEmail(),
-                    loginDTO.getPassword()
-                )
+                    new UsernamePasswordAuthenticationToken(
+                            loginDTO.getEmail(),
+                            loginDTO.getPassword()
+                    )
             );
         } catch (Exception e) {
             throw new RuntimeException("Email hoặc mật khẩu không đúng!");

@@ -30,6 +30,8 @@ public class User implements UserDetails {
     private String fullName;
     private String phone;
 
+    private String avatarUrl; // Link ảnh đại diện
+
     @Enumerated(EnumType.STRING)
     private Role role; // ADMIN, LANDLORD, TENANT
 
@@ -41,8 +43,25 @@ public class User implements UserDetails {
     // --- Tài chính & Định danh ---
     @Builder.Default
     private BigDecimal walletBalance = BigDecimal.ZERO;
-    private String citizenId; // CCCD
-    private String kycStatus; // VERIFIED, PENDING
+
+    private String citizenId; // Số CCCD
+
+    // --- BỔ SUNG TRƯỜNG NÀY ĐỂ HẾT LỖI ---
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
+    private List<String> citizenImages; // Ảnh CCCD 2 mặt
+    // ------------------------------------
+
+    private String kycStatus; // VERIFIED, PENDING...
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        if (kycStatus == null) kycStatus = "UNVERIFIED";
+    }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

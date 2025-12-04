@@ -1,6 +1,5 @@
 package com.smartrental.backend.service.impl;
 
-import com.smartrental.backend.dto.response.NotificationResponse;
 import com.smartrental.backend.entity.Notification;
 import com.smartrental.backend.entity.NotificationType;
 import com.smartrental.backend.entity.User;
@@ -12,6 +11,7 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.smartrental.backend.dto.response.NotificationResponse;
 
 import java.util.List;
 import java.util.stream.Collectors;

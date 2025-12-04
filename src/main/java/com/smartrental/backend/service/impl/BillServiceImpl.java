@@ -4,7 +4,8 @@ import com.smartrental.backend.dto.request.BillCreateDTO;
 import com.smartrental.backend.dto.response.BillResponseDTO;
 import com.smartrental.backend.entity.Bill;
 import com.smartrental.backend.entity.Contract;
-import com.smartrental.backend.mapper.BillMapper; // Import Mapper
+import com.smartrental.backend.entity.NotificationType;
+import com.smartrental.backend.mapper.BillMapper;
 import com.smartrental.backend.model.json.ServiceFee;
 import com.smartrental.backend.repository.BillRepository;
 import com.smartrental.backend.repository.ContractRepository;
@@ -21,16 +22,15 @@ public class BillServiceImpl implements BillService {
 
     private final BillRepository billRepository;
     private final ContractRepository contractRepository;
-    private final BillMapper billMapper; // Inject Mapper
+    private final BillMapper billMapper;
+    private final NotificationServiceImpl notificationService; // Inject Service thông báo
 
     @Override
     @Transactional
     public BillResponseDTO createBill(BillCreateDTO dto) {
-        // 1. Lấy hợp đồng
         Contract contract = contractRepository.findById(dto.getContractId())
                 .orElseThrow(() -> new RuntimeException("Hợp đồng không tồn tại"));
 
-        // 2. Tìm chỉ số cũ
         Bill lastBill = billRepository.findTopByContractIdOrderByCreatedAtDesc(contract.getId())
                 .orElse(null);
 
@@ -41,7 +41,6 @@ public class BillServiceImpl implements BillService {
             throw new RuntimeException("Chỉ số mới không được nhỏ hơn chỉ số cũ!");
         }
 
-        // 3. Tính tiền
         BigDecimal electricCost = contract.getElectricPrice()
                 .multiply(BigDecimal.valueOf(dto.getElectricNew() - electricOld));
 
@@ -62,7 +61,6 @@ public class BillServiceImpl implements BillService {
                 .add(waterCost)
                 .add(servicesCost);
 
-        // 4. Lưu Bill
         Bill bill = Bill.builder()
                 .contract(contract)
                 .month(dto.getMonth())
@@ -77,7 +75,17 @@ public class BillServiceImpl implements BillService {
 
         Bill savedBill = billRepository.save(bill);
 
-        // 5. Trả về DTO qua Mapper
+        // --- GỬI THÔNG BÁO ---
+        String title = "Hóa đơn mới tháng " + dto.getMonth();
+        String message = "Tổng tiền: " + totalAmount + " VND. Vui lòng thanh toán!";
+
+        notificationService.sendNotification(
+                contract.getTenant(),
+                title,
+                message,
+                NotificationType.BILL_NEW
+        );
+
         return billMapper.toResponse(savedBill);
     }
 }
