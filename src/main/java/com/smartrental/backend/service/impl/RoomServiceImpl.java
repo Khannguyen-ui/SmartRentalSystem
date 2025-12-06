@@ -46,10 +46,8 @@ public class RoomServiceImpl implements RoomService {
             throw new RuntimeException("Chỉ chủ trọ mới được đăng tin!");
         }
 
-        // Tạo Point từ tọa độ
         Point point = geometryFactory.createPoint(new Coordinate(dto.getLongitude(), dto.getLatitude()));
 
-        // Map thủ công hoặc dùng Builder để đảm bảo các trường Hybrid được set đúng
         Room room = Room.builder()
                 .title(dto.getTitle())
                 .description(dto.getDescription())
@@ -58,18 +56,26 @@ public class RoomServiceImpl implements RoomService {
                 .area(dto.getArea())
                 .address(dto.getAddress())
 
-                // --- FIELDS HYBRID ---
+                // --- QUAN TRỌNG: Lưu Gói cước ---
+                .servicePackageId(dto.getServicePackageId()) // Dòng này quan trọng nhất để tính tiền
+                // --------------------------------
+
                 .rentalType(dto.getRentalType())
                 .capacity(dto.getCapacity())
                 .genderConstraint(dto.getGenderConstraint())
-                .currentTenants(0) // Mặc định chưa có ai
-                // ---------------------
+                .currentTenants(0)
 
                 .location(point)
                 .images(dto.getImages())
                 .amenities(dto.getAmenities())
-                .status(Room.Status.ACTIVE)
-                .expirationDate(LocalDateTime.now().plusDays(30))
+                .videoUrl(dto.getVideoUrl()) // Lưu link video nếu có
+
+                // Trạng thái ban đầu là PENDING để chờ Admin duyệt
+                .status(Room.Status.PENDING)
+
+                // Ngày hết hạn tạm thời (sẽ được cộng thêm khi Admin duyệt)
+                .expirationDate(LocalDateTime.now())
+
                 .landlord(landlord)
                 .build();
 
@@ -78,8 +84,6 @@ public class RoomServiceImpl implements RoomService {
 
     @Override
     public List<RoomResponseDTO> searchNearby(double lat, double lng, double radius) {
-        // Lưu ý thứ tự tham số: Repository đang define (lat, lng) nhưng ST_MakePoint cần (lng, lat)
-        // Code Repository của bạn đã đúng logic: ST_MakePoint(:longitude, :latitude)
         List<Room> rooms = roomRepository.findRoomsNearby(lat, lng, radius);
         return rooms.stream().map(roomMapper::toResponse).collect(Collectors.toList());
     }

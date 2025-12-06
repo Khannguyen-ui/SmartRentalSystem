@@ -14,8 +14,8 @@ public class VNPayConfig {
     public static String vnp_ReturnUrl = "http://localhost:8080/api/payment/vnpay-return";
 
     // Đăng ký tại sandbox.vnpayment.vn để lấy 2 mã này
-    public static String vnp_TmnCode = "YOUR_TMN_CODE";
-    public static String vnp_HashSecret = "YOUR_HASH_SECRET";
+    public static String vnp_TmnCode = "9WXOUA4B";
+    public static String vnp_HashSecret = "N6HX13PQHKAA7EY8LYCD3IJIJ3A2ZNI1";
 
     public static String vnp_ApiUrl = "https://sandbox.vnpayment.vn/merchant_webapi/api/transaction";
 

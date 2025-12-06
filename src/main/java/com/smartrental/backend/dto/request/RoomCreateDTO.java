@@ -1,6 +1,6 @@
 package com.smartrental.backend.dto.request;
 
-import com.smartrental.backend.entity.Room; // Import Enum từ Entity
+import com.smartrental.backend.entity.Room;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
@@ -17,7 +17,7 @@ public class RoomCreateDTO {
     @NotNull(message = "Giá không được trống")
     private BigDecimal price;
 
-    private BigDecimal deposit;
+    private BigDecimal deposit; // Tiền cọc
 
     @NotNull(message = "Diện tích không được trống")
     private Double area;
@@ -31,16 +31,24 @@ public class RoomCreateDTO {
     @NotNull(message = "Kinh độ (Long) không được trống")
     private Double longitude;
 
-    // --- CẬP NHẬT CHO HYBRID ---
+    // --- CẤU HÌNH HYBRID ---
     @NotNull(message = "Phải chọn loại hình thuê (WHOLE/SHARED)")
     private Room.RentalType rentalType;
 
     @NotNull(message = "Phải nhập sức chứa")
     private Integer capacity;
 
-    private Room.GenderConstraint genderConstraint; // MALE_ONLY, FEMALE_ONLY, MIXED
-    // ----------------------------
+    private Room.GenderConstraint genderConstraint;
 
-    private List<String> images;
-    private List<String> amenities;
+    // --- BỔ SUNG CÁC TRƯỜNG BỊ THIẾU ---
+
+    private String videoUrl; // Link video Cloudinary (Optional)
+
+    @NotNull(message = "Phải chọn gói đăng tin")
+    private Integer servicePackageId; // ID gói cước để trừ tiền
+
+    // ------------------------------------
+
+    private List<String> images;    // Link ảnh
+    private List<String> amenities; // Danh sách tiện ích
 }
