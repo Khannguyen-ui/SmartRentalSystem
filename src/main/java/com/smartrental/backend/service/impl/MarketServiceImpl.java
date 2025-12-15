@@ -23,7 +23,9 @@ public class MarketServiceImpl implements MarketService {
     private final UserRepository userRepository;
     private final MarketMapper marketMapper;
 
-    // Helper: Lấy user đang đăng nhập từ Token
+    // Inject Service Kiểm duyệt AI
+    private final ContentModerationService moderationService;
+
     private User getCurrentUser() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         return userRepository.findByEmail(email)
@@ -34,63 +36,94 @@ public class MarketServiceImpl implements MarketService {
     @Transactional
     public MarketItemDTO createItem(MarketItemDTO dto) {
         User seller = getCurrentUser();
-
-        // Convert DTO -> Entity
         MarketItem item = marketMapper.toEntity(dto);
-        item.setUser(seller); // Gán người bán là user đang login
-        item.setStatus("AVAILABLE"); // Mặc định là đang bán
+        item.setUser(seller);
+
+        // --- CẬP NHẬT LOGIC: AI DUYỆT TỰ ĐỘNG ---
+        // 1. Kiểm tra văn bản (Tiêu đề + Mô tả)
+        boolean isTextSafe = moderationService.isTextSafe(dto.getTitle() + " " + dto.getDescription());
+
+        // 2. Kiểm tra hình ảnh (Duyệt qua danh sách ảnh)
+        boolean isImageSafe = true;
+        if (dto.getImages() != null && !dto.getImages().isEmpty()) {
+            for (String imgUrl : dto.getImages()) {
+                if (!moderationService.isImageSafe(imgUrl)) {
+                    isImageSafe = false;
+                    break;
+                }
+            }
+        }
+
+        // 3. Quyết định trạng thái
+        if (isTextSafe && isImageSafe) {
+            // An toàn -> Cho hiện luôn (đỡ tốn công Admin duyệt)
+            item.setStatus("AVAILABLE");
+        } else {
+            // Vi phạm -> Chặn luôn (REJECTED) hoặc để PENDING chờ Admin xem lại
+            // Ở đây mình set REJECTED để chặn hàng cấm ngay lập tức
+            item.setStatus("REJECTED");
+            System.out.println(">>> TIN ĐĂNG BỊ AI TỪ CHỐI DO VI PHẠM CHÍNH SÁCH");
+        }
+        // ----------------------------------------
 
         MarketItem savedItem = marketRepository.save(item);
-
         return marketMapper.toResponse(savedItem);
     }
 
     @Override
     public List<MarketItemDTO> getAllAvailableItems() {
-        // Lấy tất cả đồ có status là AVAILABLE, sắp xếp mới nhất
         return marketRepository.findByStatusOrderByCreatedAtDesc("AVAILABLE")
-                .stream()
-                .map(marketMapper::toResponse)
-                .collect(Collectors.toList());
+                .stream().map(marketMapper::toResponse).collect(Collectors.toList());
     }
+
+    // --- (MỚI) DÀNH CHO ADMIN ---
+    // Lấy danh sách cần duyệt (nếu bạn muốn quy trình thủ công hoặc xem lại tin bị AI chặn)
+    public List<MarketItemDTO> getPendingItems() {
+        return marketRepository.findByStatusOrderByCreatedAtDesc("PENDING") // Hoặc REJECTED nếu muốn review lại
+                .stream().map(marketMapper::toResponse).collect(Collectors.toList());
+    }
+
+    @Transactional
+    public void verifyItem(Long itemId, boolean isApproved) {
+        MarketItem item = marketRepository.findById(itemId)
+                .orElseThrow(() -> new RuntimeException("Món đồ không tồn tại"));
+
+        if (isApproved) {
+            item.setStatus("AVAILABLE");
+        } else {
+            item.setStatus("REJECTED");
+        }
+        marketRepository.save(item);
+    }
+    // ----------------------------
 
     @Override
     public List<MarketItemDTO> searchItems(String keyword) {
-        // Tìm kiếm theo từ khóa (Title hoặc Description)
         return marketRepository.searchItems(keyword)
-                .stream()
-                .map(marketMapper::toResponse)
-                .collect(Collectors.toList());
+                .stream().map(marketMapper::toResponse).collect(Collectors.toList());
     }
 
-    // --- CẬP NHẬT LOGIC: CHỐT ĐƠN CÓ NGƯỜI MUA ---
     @Override
     @Transactional
     public void markAsSold(Long itemId, Long buyerId) {
         User seller = getCurrentUser();
-
         MarketItem item = marketRepository.findById(itemId)
                 .orElseThrow(() -> new RuntimeException("Món đồ không tồn tại"));
 
-        // 1. Kiểm tra quyền sở hữu: Chỉ người đăng mới được sửa trạng thái
         if (!item.getUser().getId().equals(seller.getId())) {
-            throw new RuntimeException("Bạn không có quyền sửa món đồ này!");
+            throw new RuntimeException("Bạn không phải chủ món đồ này!");
         }
 
-        // 2. Cập nhật người mua (Nếu có)
         if (buyerId != null) {
             User buyer = userRepository.findById(buyerId)
                     .orElseThrow(() -> new RuntimeException("Người mua không tồn tại"));
 
-            // Không cho phép tự mua đồ của chính mình
             if (buyer.getId().equals(seller.getId())) {
                 throw new RuntimeException("Bạn không thể tự mua đồ của chính mình!");
             }
-
             item.setBuyer(buyer);
         }
 
-        // 3. Đổi trạng thái
         item.setStatus("SOLD");
         marketRepository.save(item);
     }
