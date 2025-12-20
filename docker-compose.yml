@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  # 1. Database (Đổi sang image có sẵn PostGIS)
+  db:
+    image: postgis/postgis:16-3.4-alpine  # <--- THAY ĐỔI DÒNG NÀY
+    container_name: smartrental_db
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_HOST_AUTH_METHOD=trust
+      - POSTGRES_DB=smart_rental_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - smartrental-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 2. Giao diện quản lý Database (pgAdmin 4)
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: smartrental_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - db
+    networks:
+      - smartrental-network
+
+  # 3. Backend
+  backend:
+    build: .
+    container_name: smartrental_backend
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/smart_rental_db
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - smartrental-network
+
+volumes:
+  postgres_data:
+
+networks:
+  smartrental-network:
+    driver: bridge
