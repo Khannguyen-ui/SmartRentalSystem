@@ -46,13 +46,16 @@ public class User implements UserDetails {
 
     private String citizenId; // Số CCCD
 
-    // --- BỔ SUNG TRƯỜNG NÀY ĐỂ HẾT LỖI ---
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
     private List<String> citizenImages; // Ảnh CCCD 2 mặt
-    // ------------------------------------
 
     private String kycStatus; // VERIFIED, PENDING...
+
+    // --- (MỚI) TRẠNG THÁI HOẠT ĐỘNG CHO ADMIN QUẢN LÝ ---
+    @Column(name = "is_active")
+    private boolean isActive; // true = Hoạt động, false = Bị khóa
+    // ----------------------------------------------------
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
@@ -61,6 +64,7 @@ public class User implements UserDetails {
     protected void onCreate() {
         createdAt = LocalDateTime.now();
         if (kycStatus == null) kycStatus = "UNVERIFIED";
+        isActive = true; // Mặc định khi tạo mới là Active (Hoạt động)
     }
 
     @Override
@@ -71,7 +75,10 @@ public class User implements UserDetails {
     @Override public boolean isAccountNonExpired() { return true; }
     @Override public boolean isAccountNonLocked() { return true; }
     @Override public boolean isCredentialsNonExpired() { return true; }
-    @Override public boolean isEnabled() { return true; }
+
+    // Cập nhật hàm này để Spring Security tự động chặn đăng nhập nếu bị khóa
+    @Override
+    public boolean isEnabled() { return isActive; }
 
     public enum Role { ADMIN, LANDLORD, TENANT }
 }

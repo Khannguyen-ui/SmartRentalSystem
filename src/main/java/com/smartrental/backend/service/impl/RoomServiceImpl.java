@@ -55,27 +55,17 @@ public class RoomServiceImpl implements RoomService {
                 .deposit(dto.getDeposit())
                 .area(dto.getArea())
                 .address(dto.getAddress())
-
-                // --- QUAN TRỌNG: Lưu Gói cước ---
-                .servicePackageId(dto.getServicePackageId()) // Dòng này quan trọng nhất để tính tiền
-                // --------------------------------
-
+                .servicePackageId(dto.getServicePackageId())
                 .rentalType(dto.getRentalType())
                 .capacity(dto.getCapacity())
                 .genderConstraint(dto.getGenderConstraint())
                 .currentTenants(0)
-
                 .location(point)
                 .images(dto.getImages())
                 .amenities(dto.getAmenities())
-                .videoUrl(dto.getVideoUrl()) // Lưu link video nếu có
-
-                // Trạng thái ban đầu là PENDING để chờ Admin duyệt
+                .videoUrl(dto.getVideoUrl())
                 .status(Room.Status.PENDING)
-
-                // Ngày hết hạn tạm thời (sẽ được cộng thêm khi Admin duyệt)
                 .expirationDate(LocalDateTime.now())
-
                 .landlord(landlord)
                 .build();
 
@@ -101,5 +91,13 @@ public class RoomServiceImpl implements RoomService {
         Room room = roomRepository.findByIdAndLandlordId(id, landlord.getId())
                 .orElseThrow(() -> new RuntimeException("Phòng không tồn tại hoặc không phải của bạn"));
         roomRepository.delete(room);
+    }
+
+    // --- BỔ SUNG ĐOẠN NÀY ---
+    @Override
+    public RoomResponseDTO getRoomDetail(Long id) {
+        Room room = roomRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Phòng không tồn tại"));
+        return roomMapper.toResponse(room);
     }
 }

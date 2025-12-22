@@ -34,4 +34,6 @@ public interface RoomService {
      * @param id id phòng
      */
     void deleteRoom(Long id);
+
+    RoomResponseDTO getRoomDetail(Long id);
 }

@@ -40,10 +40,26 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         jwt = authHeader.substring(7);
-        userEmail = jwtUtils.extractUsername(jwt);
+
+        // --- BẮT ĐẦU ĐOẠN SỬA ---
+        try {
+            // Cố gắng lấy email từ token
+            userEmail = jwtUtils.extractUsername(jwt);
+        } catch (Exception e) {
+            // Nếu token hết hạn hoặc lỗi:
+            // 1. Không làm gì cả (không set Authentication)
+            // 2. Cho request đi tiếp (filterChain.doFilter)
+            // -> Kết quả: Request này sẽ được coi là "Người dùng chưa đăng nhập" (Anonymous)
+            // -> SecurityConfig sẽ chặn lại và trả về 403 Forbidden (thay vì 500 lỗi server)
+            filterChain.doFilter(request, response);
+            return;
+        }
+        // --- KẾT THÚC ĐOẠN SỬA ---
 
         if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
+
+            // Kiểm tra token còn hiệu lực không
             if (jwtUtils.isTokenValid(jwt, userDetails)) {
                 UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                         userDetails,

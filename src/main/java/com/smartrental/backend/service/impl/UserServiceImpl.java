@@ -67,7 +67,10 @@ public class UserServiceImpl implements UserService {
                     )
             );
         } catch (Exception e) {
-            throw new RuntimeException("Email hoặc mật khẩu không đúng!");
+            // --- THÊM 2 DÒNG NÀY ĐỂ SOI LỖI ---
+            e.printStackTrace(); // In lỗi chi tiết ra Terminal
+            throw new RuntimeException("Lỗi đăng nhập: " + e.getMessage()); // Hiển thị lỗi cụ thể lên Postman/Web
+            // ----------------------------------
         }
 
         // 2. Tìm User
