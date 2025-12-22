@@ -102,5 +102,5 @@ public class Room {
     public enum GenderConstraint { MALE_ONLY, FEMALE_ONLY, MIXED }
 
     // (ĐÃ SỬA) Thêm PENDING vào đây để hết lỗi
-    public enum Status { PENDING, ACTIVE, FULL, HIDDEN, EXPIRED }
+    public enum Status { PENDING, ACTIVE, FULL, HIDDEN, EXPIRED,APPROVED, REJECTED, }
 }

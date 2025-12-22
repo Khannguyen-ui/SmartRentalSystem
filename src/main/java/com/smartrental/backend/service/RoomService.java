@@ -3,6 +3,7 @@ package com.smartrental.backend.service;
 import java.util.List;
 
 import com.smartrental.backend.dto.request.RoomCreateDTO;
+import com.smartrental.backend.dto.request.RoomUpdateDTO;
 import com.smartrental.backend.dto.response.RoomResponseDTO;
 
 public interface RoomService {
@@ -36,4 +37,5 @@ public interface RoomService {
     void deleteRoom(Long id);
 
     RoomResponseDTO getRoomDetail(Long id);
+    RoomResponseDTO updateRoom(Long id, RoomUpdateDTO dto);
 }
