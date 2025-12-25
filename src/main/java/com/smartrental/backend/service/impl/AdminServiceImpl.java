@@ -83,7 +83,7 @@ public class AdminServiceImpl implements AdminService {
             room.setExpirationDate(expiryBase.plusDays(servicePackage.getDurationDays()));
             System.out.println(">>> DUYỆT THÀNH CÔNG! ĐÃ TRỪ TIỀN.");
         } else {
-            room.setStatus(Room.Status.HIDDEN);
+            room.setStatus(Room.Status.REJECTED);
         }
         roomRepository.save(room);
     }
