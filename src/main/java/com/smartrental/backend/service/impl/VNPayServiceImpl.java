@@ -40,16 +40,26 @@ public class VNPayServiceImpl implements VNPayService {
         vnp_Params.put("vnp_ReturnUrl", VNPayConfig.vnp_ReturnUrl);
         vnp_Params.put("vnp_IpAddr", vnp_IpAddr);
 
-        // Thời gian tạo & hết hạn
-        Calendar cld = Calendar.getInstance(TimeZone.getTimeZone("Asia/Ho_Chi_Minh"));
+        // --- SỬA LỖI MÚI GIỜ TẠI ĐÂY ---
 
+        // 1. Lấy múi giờ chuẩn Việt Nam
+        TimeZone vnTimeZone = TimeZone.getTimeZone("Asia/Ho_Chi_Minh");
+        Calendar cld = Calendar.getInstance(vnTimeZone);
+
+        // 2. Cấu hình Formatter cũng phải dùng múi giờ Việt Nam
         SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMddHHmmss");
+        formatter.setTimeZone(vnTimeZone); // <--- QUAN TRỌNG: Dòng này sửa lỗi sai giờ trên Docker
+
+        // 3. Tạo ngày tạo giao dịch
         String vnp_CreateDate = formatter.format(cld.getTime());
         vnp_Params.put("vnp_CreateDate", vnp_CreateDate);
 
-        cld.add(Calendar.MINUTE, 15); // Link tồn tại 15 phút
+        // 4. Tạo ngày hết hạn (Thêm 15 phút)
+        cld.add(Calendar.MINUTE, 15);
         String vnp_ExpireDate = formatter.format(cld.getTime());
         vnp_Params.put("vnp_ExpireDate", vnp_ExpireDate);
+
+        // -------------------------------
 
         // Build chuỗi Query String chuẩn
         List<String> fieldNames = new ArrayList<>(vnp_Params.keySet());
@@ -104,12 +114,20 @@ public class VNPayServiceImpl implements VNPayService {
         if (fields.containsKey("vnp_SecureHashType")) fields.remove("vnp_SecureHashType");
         if (fields.containsKey("vnp_SecureHash")) fields.remove("vnp_SecureHash");
 
-        // Kiểm tra Response Code = "00" là thành công
-        String vnp_ResponseCode = request.getParameter("vnp_ResponseCode");
-        if ("00".equals(vnp_ResponseCode)) {
-            return 1; // Thành công
+        // --- ĐOẠN CODE CẦN THÊM VÀO ĐÂY ---
+        // Tính toán lại chữ ký từ dữ liệu nhận được để so sánh với chữ ký của VNPay
+        String signValue = VNPayConfig.hashAllFields(fields); // Bạn cần viết hàm này trong VNPayConfig tương tự lúc tạo URL
+
+        // So sánh chữ ký
+        if (signValue.equals(vnp_SecureHash)) {
+            // Chữ ký đúng -> Tiếp tục kiểm tra trạng thái giao dịch
+            if ("00".equals(request.getParameter("vnp_ResponseCode"))) {
+                return 1; // Thành công
+            } else {
+                return 0; // Giao dịch thất bại / Khách hủy
+            }
         } else {
-            return 0; // Thất bại
+            return -1; // Chữ ký không hợp lệ (Có dấu hiệu giả mạo)
         }
     }
 }

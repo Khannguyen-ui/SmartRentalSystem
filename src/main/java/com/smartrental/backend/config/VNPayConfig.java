@@ -3,23 +3,45 @@ package com.smartrental.backend.config;
 import jakarta.servlet.http.HttpServletRequest;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 public class VNPayConfig {
     public static String vnp_PayUrl = "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html";
 
-    // URL này VNPay sẽ gọi lại khi thanh toán xong
-    // Bạn cần thay đổi localhost thành IP LAN nếu test trên điện thoại
+    // LƯU Ý QUAN TRỌNG:
+    // Nếu test trên điện thoại thật hoặc máy ảo Android, "localhost" sẽ không chạy được.
+    // Hãy đổi thành IP LAN của máy tính (VD: http://192.168.1.5:8080/api/payment/vnpay-return)
     public static String vnp_ReturnUrl = "http://localhost:8080/api/payment/vnpay-return";
 
-    // Đăng ký tại sandbox.vnpayment.vn để lấy 2 mã này
-    public static String vnp_TmnCode = "9WXOUA4B";
-    public static String vnp_HashSecret = "N6HX13PQHKAA7EY8LYCD3IJIJ3A2ZNI1";
-
+    public static String vnp_TmnCode = "OB95XN6Y"; // Mã Website của bạn
+    public static String vnp_HashSecret = "GLT1V41JVEREAQXWLVQXAS86C3CKPWXD"; // Chuỗi bí mật
     public static String vnp_ApiUrl = "https://sandbox.vnpayment.vn/merchant_webapi/api/transaction";
 
-    // Hàm mã hóa dữ liệu (Checksum) để đảm bảo toàn vẹn
+    // --- 1. THÊM HÀM NÀY ĐỂ CHECK CHỮ KÝ (QUAN TRỌNG) ---
+    public static String hashAllFields(Map fields) {
+        List fieldNames = new ArrayList(fields.keySet());
+        Collections.sort(fieldNames);
+        StringBuilder sb = new StringBuilder();
+        Iterator itr = fieldNames.iterator();
+        while (itr.hasNext()) {
+            String fieldName = (String) itr.next();
+            String fieldValue = (String) fields.get(fieldName);
+            if ((fieldValue != null) && (fieldValue.length() > 0)) {
+                sb.append(fieldName);
+                sb.append("=");
+                sb.append(fieldValue);
+            }
+            if (itr.hasNext()) {
+                sb.append("&");
+            }
+        }
+        return hmacSHA512(vnp_HashSecret, sb.toString());
+    }
+    // ----------------------------------------------------
+
     public static String hmacSHA512(final String key, final String data) {
         try {
             if (key == null || data == null) {
@@ -41,7 +63,6 @@ public class VNPayConfig {
         }
     }
 
-    // Hàm lấy IP người dùng
     public static String getIpAddress(HttpServletRequest request) {
         String ipAdress;
         try {
@@ -55,7 +76,6 @@ public class VNPayConfig {
         return ipAdress;
     }
 
-    // Hàm sinh mã ngẫu nhiên
     public static String getRandomNumber(int len) {
         Random rnd = new Random();
         String chars = "0123456789";
