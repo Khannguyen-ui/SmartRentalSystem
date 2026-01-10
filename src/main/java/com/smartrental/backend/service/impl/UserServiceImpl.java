@@ -3,6 +3,7 @@ package com.smartrental.backend.service.impl;
 import com.smartrental.backend.dto.request.LoginDTO;
 import com.smartrental.backend.dto.request.UserRegisterDTO;
 import com.smartrental.backend.dto.response.AuthResponse;
+import com.smartrental.backend.dto.response.LandlordStatsDTO;
 import com.smartrental.backend.dto.response.UserResponseDTO;
 import com.smartrental.backend.entity.User;
 import com.smartrental.backend.mapper.UserMapper;
@@ -10,12 +11,15 @@ import com.smartrental.backend.repository.UserRepository;
 import com.smartrental.backend.service.UserService;
 import com.smartrental.backend.util.JwtUtils;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -89,4 +93,20 @@ public class UserServiceImpl implements UserService {
                 .role(user.getRole().name())
                 .build();
     }
+    @Override
+    public List<LandlordStatsDTO> getTopLandlords(double lat, double lng, double radius) {
+        // Gọi Native Query lấy dữ liệu thô
+        List<Object[]> results = userRepository.findTopLandlordsNearbyRaw(lat, lng, radius, PageRequest.of(0, 5));
+
+        // Map từ Object[] sang DTO
+        return results.stream()
+                .map(row -> new LandlordStatsDTO(
+                        ((Number) row[0]).longValue(),  // id
+                        (String) row[1],               // fullName
+                        (String) row[2],               // avatarUrl
+                        ((Number) row[3]).longValue()  // postCount
+                ))
+                .collect(Collectors.toList());
+    }
+
 }

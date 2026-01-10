@@ -10,6 +10,7 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.http.HttpMethod;
 
 @Configuration
 @EnableWebSecurity
@@ -26,8 +27,15 @@ public class SecurityConfig {
         http
             .csrf(AbstractHttpConfigurer::disable)
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**", "/api/payment/**", "/error","/ws/**").permitAll()
-                .anyRequest().authenticated()
+                .requestMatchers("/api/auth/**", "/api/payment/**","/api/rooms/**", "/error","/ws/**").permitAll()
+                                    .requestMatchers(HttpMethod.GET, "/api/admin/amenities").permitAll()
+
+                     // --- 3. [MỚI] CHO PHÉP API LẤY TOP CHỦ TRỌ ---
+                    .requestMatchers(HttpMethod.GET, "/api/users/top-landlords").permitAll()
+                    // ---------------------------------------------
+
+
+                    .anyRequest().authenticated()
             )
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS)

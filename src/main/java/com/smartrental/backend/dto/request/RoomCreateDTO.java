@@ -40,6 +40,12 @@ public class RoomCreateDTO {
 
     private Room.GenderConstraint genderConstraint;
 
+    private String furnitureStatus;
+    private String legalStatus;
+    private String direction;
+    private Integer floorNumber;
+    private Integer numBedrooms;
+    private Integer numBathrooms;
     // --- BỔ SUNG CÁC TRƯỜNG BỊ THIẾU ---
 
     private String videoUrl; // Link video Cloudinary (Optional)

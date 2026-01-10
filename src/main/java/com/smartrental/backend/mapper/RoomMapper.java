@@ -13,30 +13,35 @@ public class RoomMapper {
     @Autowired
     private ModelMapper modelMapper;
 
-    // Không dùng toEntity này trong createRoom nữa vì mình đã dùng Builder ở Service rồi
-    // Giữ lại nếu cần dùng cho Update Room sau này
     public Room toEntity(RoomCreateDTO dto) {
         return modelMapper.map(dto, Room.class);
     }
 
     public RoomResponseDTO toResponse(Room room) {
+        // 1. Tự động map các trường trùng tên (bao gồm cả furnitureStatus, numBedrooms... nếu Entity có)
         RoomResponseDTO dto = modelMapper.map(room, RoomResponseDTO.class);
 
-        // Map tọa độ
+        // 2. Map tọa độ (Check null để an toàn)
         if (room.getLocation() != null) {
             dto.setLatitude(room.getLocation().getY());
             dto.setLongitude(room.getLocation().getX());
         }
 
-        // Map thông tin chủ trọ
+        // 3. Map thông tin chủ trọ (Check null để tránh lỗi 500/400)
         if (room.getLandlord() != null) {
+            dto.setLandlordId(room.getLandlord().getId());
             dto.setLandlordName(room.getLandlord().getFullName());
             dto.setLandlordPhone(room.getLandlord().getPhone());
+            dto.setLandlordAvatar(room.getLandlord().getAvatarUrl());
+            dto.setLandlordJoinDate(room.getLandlord().getCreatedAt());
+        } else {
+            // Fallback nếu không có chủ trọ (tránh crash app)
+            dto.setLandlordName("Hệ thống / Admin");
+            dto.setLandlordId(0L);
         }
 
-        // ModelMapper thường tự map Enum nếu tên giống nhau.
-        // Nhưng nếu muốn chắc chắn, bạn có thể set tay:
-        // dto.setRentalType(room.getRentalType());
+        // 4. Map ngày tạo bài viết
+        dto.setCreatedAt(room.getCreatedAt());
 
         return dto;
     }

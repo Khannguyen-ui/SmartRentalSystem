@@ -13,12 +13,13 @@ public interface RoomRepository extends JpaRepository<Room, Long> {
 
 
     List<Room> findByStatus(Room.Status status);
-    // --------------------------------
+    // ------------------------------   --
 
-    // Các hàm cũ giữ nguyên
+
+
     @Query(value = "SELECT * FROM rooms r " +
-            "WHERE ST_DWithin(r.location, ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326), :radius) " +
-            "AND r.status = 'ACTIVE'",
+            "WHERE r.status = 'ACTIVE' " +
+            "AND ST_DistanceSphere(r.location, ST_MakePoint(:longitude, :latitude)) <= :radius",
             nativeQuery = true)
     List<Room> findRoomsNearby(@Param("latitude") double latitude,
                                @Param("longitude") double longitude,

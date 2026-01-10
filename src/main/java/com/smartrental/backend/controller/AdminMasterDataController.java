@@ -22,7 +22,7 @@ public class AdminMasterDataController {
 
     // 2. Cho phép User/Landlord xem danh sách tiện ích
     @GetMapping("/amenities")
-    @PreAuthorize("isAuthenticated()") // Ai đăng nhập rồi cũng xem được
+//    @PreAuthorize("isAuthenticated()") // Ai đăng nhập rồi cũng xem được
     public ResponseEntity<List<AmenitiesRef>> getAllAmenities() {
         return ResponseEntity.ok(masterDataService.getAllAmenities());
     }

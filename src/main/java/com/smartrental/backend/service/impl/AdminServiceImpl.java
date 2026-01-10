@@ -77,6 +77,7 @@ public class AdminServiceImpl implements AdminService {
             transactionRepository.save(transaction);
 
             room.setStatus(Room.Status.ACTIVE);
+            room.setApprovedAt(LocalDateTime.now());
             LocalDateTime expiryBase = (room.getExpirationDate() != null && room.getExpirationDate().isAfter(LocalDateTime.now()))
                     ? room.getExpirationDate()
                     : LocalDateTime.now();

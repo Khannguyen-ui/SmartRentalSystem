@@ -1,14 +1,19 @@
 package com.smartrental.backend.controller;
 
 import com.smartrental.backend.dto.request.UserProfileDTO;
+import com.smartrental.backend.dto.response.LandlordStatsDTO;
 import com.smartrental.backend.dto.response.UserResponseDTO;
 import com.smartrental.backend.entity.User;
 import com.smartrental.backend.mapper.UserMapper;
 import com.smartrental.backend.repository.UserRepository;
+import com.smartrental.backend.service.UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/users")
@@ -17,6 +22,7 @@ public class UserController {
 
     private final UserRepository userRepository;
     private final UserMapper userMapper;
+    private final UserService userService;
 
     // 1. Lấy thông tin cá nhân (Profile)
     @GetMapping("/profile")
@@ -45,4 +51,14 @@ public class UserController {
 
         return ResponseEntity.ok(userMapper.toResponse(userRepository.save(user)));
     }
+    // API: Lấy Top chủ trọ theo khu vực bán kính
+    @GetMapping("/top-landlords")
+    public ResponseEntity<List<LandlordStatsDTO>> getTopLandlords(
+            @RequestParam double lat,
+            @RequestParam double lng,
+            @RequestParam(defaultValue = "10000") double radius
+    ) {
+        return ResponseEntity.ok(userService.getTopLandlords(lat, lng, radius));
+    }
+
 }

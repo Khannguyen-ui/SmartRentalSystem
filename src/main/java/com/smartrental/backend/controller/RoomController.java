@@ -53,8 +53,23 @@ public class RoomController {
 
     // 6. Tìm kiếm (Giữ nguyên)
     @GetMapping("/search")
-    public ResponseEntity<List<RoomResponseDTO>> searchRooms(
-            @RequestParam double lat, @RequestParam double lng, @RequestParam(defaultValue = "5000") double radius) {
-        return ResponseEntity.ok(roomService.searchNearby(lat, lng, radius));
+    public ResponseEntity<?> searchRooms(
+            @RequestParam(name = "lat") String latStr,
+            @RequestParam(name = "lng") String lngStr,
+            @RequestParam(name = "radius", defaultValue = "50000") String radiusStr
+    ) {
+        try {
+            // Tự ép kiểu thủ công -> Bắt lỗi dễ dàng hơn
+            Double lat = Double.parseDouble(latStr);
+            Double lng = Double.parseDouble(lngStr);
+            Double radius = Double.parseDouble(radiusStr);
+
+            return ResponseEntity.ok(roomService.searchNearby(lat, lng, radius));
+        } catch (Exception e) {
+            e.printStackTrace(); // In lỗi ra log để xem
+            return ResponseEntity.badRequest().body("Lỗi tham số: " + e.getMessage());
+        }
     }
+
+
 }

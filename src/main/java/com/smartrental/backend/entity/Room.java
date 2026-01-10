@@ -31,6 +31,28 @@ public class Room {
     private Double area;      // Diện tích
     private String address;
 
+    @Column(name = "approved_at")
+    private LocalDateTime approvedAt;
+
+    // Quy mo
+    @Column(name = "furniture_status")
+    private String furnitureStatus; // VD: "Nội thất đầy đủ", "Cơ bản", "Nhà trống"
+
+    @Column(name = "legal_status")
+    private String legalStatus; // VD: "Đã có sổ", "Đang chờ sổ"
+
+    @Column(name = "direction")
+    private String direction; // VD: "Đông Nam", "Tây Bắc"
+
+    @Column(name = "floor_number")
+    private Integer floorNumber; // Tầng mấy (VD: 2)
+
+    @Column(name = "num_bedrooms")
+    private Integer numBedrooms; // Số phòng ngủ
+
+    @Column(name = "num_bathrooms")
+    private Integer numBathrooms; // Số phòng vệ sinh
+
     // --- CORE HYBRID LOGIC ---
     @Enumerated(EnumType.STRING)
     private RentalType rentalType; // WHOLE (Nguyên căn) - SHARED (Ở ghép)

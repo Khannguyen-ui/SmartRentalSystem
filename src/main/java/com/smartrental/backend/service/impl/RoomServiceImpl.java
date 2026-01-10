@@ -60,12 +60,19 @@ public class RoomServiceImpl implements RoomService {
                 .servicePackageId(dto.getServicePackageId())
                 .rentalType(dto.getRentalType())
                 .capacity(dto.getCapacity())
+                .furnitureStatus(dto.getFurnitureStatus())
+                .legalStatus(dto.getLegalStatus())
+                .direction(dto.getDirection())
+                .floorNumber(dto.getFloorNumber())
+                .numBedrooms(dto.getNumBedrooms())
+                .numBathrooms(dto.getNumBathrooms())
                 .genderConstraint(dto.getGenderConstraint())
                 .currentTenants(0)
                 .location(point)
                 .images(dto.getImages()) // Lưu danh sách ảnh
                 .amenities(dto.getAmenities())
                 .videoUrl(dto.getVideoUrl())
+
                 .status(Room.Status.PENDING) // Mặc định chờ duyệt
                 .expirationDate(LocalDateTime.now().plusDays(30)) // Ví dụ: tin hết hạn sau 30 ngày
                 .landlord(landlord)
@@ -107,6 +114,12 @@ public class RoomServiceImpl implements RoomService {
         if (dto.getAddress() != null) room.setAddress(dto.getAddress());
         if (dto.getRentalType() != null) room.setRentalType(dto.getRentalType());
         if (dto.getCapacity() != null) room.setCapacity(dto.getCapacity());
+        if (dto.getFurnitureStatus() != null) room.setFurnitureStatus(dto.getFurnitureStatus());
+        if (dto.getLegalStatus() != null) room.setLegalStatus(dto.getLegalStatus());
+        if (dto.getDirection() != null) room.setDirection(dto.getDirection());
+        if (dto.getFloorNumber() != null) room.setFloorNumber(dto.getFloorNumber());
+        if (dto.getNumBedrooms() != null) room.setNumBedrooms(dto.getNumBedrooms());
+        if (dto.getNumBathrooms() != null) room.setNumBathrooms(dto.getNumBathrooms());
         if (dto.getGenderConstraint() != null) room.setGenderConstraint(dto.getGenderConstraint());
         if (dto.getVideoUrl() != null) room.setVideoUrl(dto.getVideoUrl());
 
