@@ -1,5 +1,6 @@
 package com.smartrental.backend.service.impl;
 
+import com.smartrental.backend.dto.request.KycRequestDTO;
 import com.smartrental.backend.dto.request.LoginDTO;
 import com.smartrental.backend.dto.request.UserRegisterDTO;
 import com.smartrental.backend.dto.response.AuthResponse;
@@ -16,6 +17,8 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -108,5 +111,48 @@ public class UserServiceImpl implements UserService {
                 ))
                 .collect(Collectors.toList());
     }
+    @Override
+    @Transactional // Nhớ thêm @Transactional để đảm bảo lưu DB an toàn
+    public void upgradeToLandlord() {
+        // 1. Lấy user hiện tại từ Security Context
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // 2. Kiểm tra nếu đã là chủ trọ rồi thì thôi
+        if (user.getRole() == User.Role.LANDLORD) {
+            throw new RuntimeException("Bạn đã là Chủ trọ rồi!");
+        }
+
+        // 3. Cập nhật Role
+        user.setRole(User.Role.LANDLORD);
+
+        // (Tùy chọn) Reset lại trạng thái KYC về UNVERIFIED để bắt xác minh lại danh tính
+        // user.setKycStatus("UNVERIFIED");
+
+        userRepository.save(user);
+    }
+    @Override
+    @Transactional
+    public void submitKyc(KycRequestDTO dto) {
+        // 1. Lấy user hiện tại
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // 2. Validate
+        if ("VERIFIED".equals(user.getKycStatus())) {
+            throw new RuntimeException("Tài khoản đã được xác minh danh tính rồi!");
+        }
+
+        // 3. Cập nhật thông tin KYC
+        user.setCitizenId(dto.getCitizenId());
+        user.setCitizenImages(dto.getCitizenImages()); // Lưu list ảnh
+        user.setKycStatus("PENDING"); // Chuyển trạng thái chờ duyệt
+
+        userRepository.save(user);
+    }
+
+
 
 }

@@ -60,7 +60,8 @@ public class IssueController {
                     savedIssue.getContract().getTenant(),
                     "Cập nhật tiến độ sửa chữa",
                     message,
-                    NotificationType.ISSUE_UPDATE
+                    NotificationType.ISSUE_UPDATE,
+                    savedIssue.getId()
             );
         }
         // --------------------------------------

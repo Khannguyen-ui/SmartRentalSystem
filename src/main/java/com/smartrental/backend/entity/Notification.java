@@ -20,6 +20,10 @@ public class Notification {
 
     private String title;
 
+    @Column(name = "reference_id")
+    private Long referenceId; // lưu đối tượng ID thông báo liên quan tới lịch hẹn,bill....
+
+
     @Column(columnDefinition = "TEXT")
     private String message;
 

@@ -2,7 +2,7 @@ package com.smartrental.backend.controller;
 
 import com.smartrental.backend.dto.request.ApproveRequestDTO;
 import com.smartrental.backend.dto.request.UserRegisterDTO;
-import com.smartrental.backend.dto.response.RoomResponseDTO; // <--- QUAN TRỌNG: Import DTO
+import com.smartrental.backend.dto.response.RoomResponseDTO;
 import com.smartrental.backend.entity.User;
 import com.smartrental.backend.service.AdminService;
 import lombok.RequiredArgsConstructor;
@@ -11,6 +11,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map; // Import thêm Map
 
 @RestController
 @RequestMapping("/api/admin")
@@ -19,28 +20,44 @@ public class AdminController {
 
     private final AdminService adminService;
 
-    // --- API DUYỆT CŨ ---
+    // ==========================================
+    // 1. QUẢN LÝ TIN ĐĂNG & KYC (QUAN TRỌNG)
+    // ==========================================
+
     @PutMapping("/rooms/{id}/approve")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> approveRoom(@PathVariable Long id, @RequestBody ApproveRequestDTO dto) {
-        adminService.approveRoom(id, dto);
-        return ResponseEntity.ok("Đã cập nhật trạng thái phòng!");
+        try {
+            adminService.approveRoom(id, dto);
+            return ResponseEntity.ok(Map.of("message", "Đã cập nhật trạng thái phòng!"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
     }
 
+    // --- API DUYỆT KYC (ĐÃ SỬA ĐỂ BẮT LỖI) ---
     @PutMapping("/users/{id}/kyc")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> approveKYC(@PathVariable Long id, @RequestBody ApproveRequestDTO dto) {
-        adminService.approveKYC(id, dto);
-        return ResponseEntity.ok("Đã xử lý hồ sơ KYC!");
+        try {
+            // Gọi xuống Service
+            adminService.approveKYC(id, dto);
+
+            // Trả về JSON chuẩn
+            return ResponseEntity.ok(Map.of("message", "Đã xử lý hồ sơ KYC thành công!"));
+        } catch (Exception e) {
+            // --- IN LỖI RA TERMINAL ĐỂ DEBUG ---
+            System.err.println(">>> LỖI DUYỆT KYC: " + e.getMessage());
+            e.printStackTrace();
+            // ----------------------------------
+            return ResponseEntity.badRequest().body(Map.of("message", "Lỗi: " + e.getMessage()));
+        }
     }
 
-    @GetMapping("/stats")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> getStats() {
-        return ResponseEntity.ok("Total Users: " + adminService.getTotalUsers());
-    }
-
-    // --- API QUẢN LÝ USER MỚI ---
+    // ==========================================
+    // 2. QUẢN LÝ NGƯỜI DÙNG (USER CRUD)
+    // ==========================================
 
     @GetMapping("/users")
     @PreAuthorize("hasRole('ADMIN')")
@@ -64,19 +81,26 @@ public class AdminController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> toggleUserStatus(@PathVariable Long id) {
         adminService.toggleUserStatus(id);
-        return ResponseEntity.ok("Đã thay đổi trạng thái hoạt động của tài khoản!");
+        return ResponseEntity.ok(Map.of("message", "Đã thay đổi trạng thái tài khoản!"));
     }
 
     @DeleteMapping("/users/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> deleteUser(@PathVariable Long id) {
         adminService.deleteUser(id);
-        return ResponseEntity.ok("Đã xóa tài khoản vĩnh viễn!");
+        return ResponseEntity.ok(Map.of("message", "Đã xóa tài khoản vĩnh viễn!"));
     }
 
-    // --- SỬA LẠI ĐOẠN NÀY ĐỂ KHỚP VỚI SERVICE ---
-    // Cũ (Sai): public ResponseEntity<List<Room>> getPendingRooms()
-    // Mới (Đúng): Trả về DTO để tránh lỗi "envelope"
+    // ==========================================
+    // 3. THỐNG KÊ & KHÁC
+    // ==========================================
+
+    @GetMapping("/stats")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> getStats() {
+        return ResponseEntity.ok(Map.of("totalUsers", adminService.getTotalUsers()));
+    }
+
     @GetMapping("/rooms/pending")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<RoomResponseDTO>> getPendingRooms() {

@@ -29,6 +29,9 @@ public class Appointment {
     // Thời gian hẹn gặp
     private LocalDateTime meetTime;
 
+    private LocalDateTime suggestedMeetTime;
+
+
     @Column(columnDefinition = "TEXT")
     private String message; // Lời nhắn của khách
 
@@ -44,5 +47,5 @@ public class Appointment {
         if (status == null) status = Status.PENDING;
     }
 
-    public enum Status { PENDING, CONFIRMED, CANCELLED, COMPLETED }
+    public enum Status { PENDING, CONFIRMED, CANCELLED, COMPLETED, SUGGESTED  }
 }

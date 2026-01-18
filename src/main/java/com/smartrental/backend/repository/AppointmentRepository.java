@@ -8,11 +8,13 @@ import java.util.List;
 
 @Repository
 public interface AppointmentRepository extends JpaRepository<Appointment, Long> {
-    
-    // 1. Lấy danh sách lịch của Người thuê
-    List<Appointment> findByTenantId(Long tenantId);
 
-    // 2. Lấy danh sách lịch của Chủ trọ (Dựa trên phòng thuộc về chủ trọ)
-    // Query này join bảng appointment -> room -> check landlord_id
-    List<Appointment> findByRoom_LandlordId(Long landlordId);
+    // 1. Lấy danh sách tôi đi xin thuê (Tenant)
+    List<Appointment> findByTenantIdOrderByCreatedAtDesc(Long tenantId);
+
+    // 2. Lấy danh sách người ta xin thuê phòng của tôi (Landlord)
+    List<Appointment> findByRoom_LandlordIdOrderByCreatedAtDesc(Long landlordId);
+
+    List<Appointment> findByRoom_IdAndStatusIn(Long roomId, List<Appointment.Status> statuses);
+
 }

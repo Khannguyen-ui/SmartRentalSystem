@@ -1,6 +1,7 @@
 package com.smartrental.backend.repository;
 
 import com.smartrental.backend.entity.Notification;
+import com.smartrental.backend.entity.NotificationType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import java.util.List;
@@ -12,4 +13,6 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
 
     // Đếm số thông báo chưa đọc (để hiện chấm đỏ trên App)
     long countByUserIdAndIsReadFalse(Long userId);
+
+    List<Notification> findAllByReferenceIdAndType(Long referenceId, NotificationType type);
 }

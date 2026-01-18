@@ -83,7 +83,8 @@ public class BillServiceImpl implements BillService {
                 contract.getTenant(),
                 title,
                 message,
-                NotificationType.BILL_NEW
+                NotificationType.BILL_NEW,
+                savedBill.getId()
         );
 
         return billMapper.toResponse(savedBill);
