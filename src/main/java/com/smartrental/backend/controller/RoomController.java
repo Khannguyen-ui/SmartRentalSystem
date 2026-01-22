@@ -61,8 +61,10 @@ public class RoomController {
 
             // 👇 SỬA DÒNG NÀY 👇
             // Ý nghĩa: "Lấy tham số 'address' trên URL, nhưng gán vào biến tên là 'keyword'"
-            @RequestParam(name = "address", required = false) String keyword
+            @RequestParam(name = "keyword", required = false) String keyword,
+            @RequestParam(name = "address", required = false) String address
     ) {
+        System.out.println("📢 CHECK DEBUG - KEYWORD NHẬN ĐƯỢC LÀ: " + keyword);
         try {
             Double lat = Double.parseDouble(latStr);
             Double lng = Double.parseDouble(lngStr);
@@ -72,11 +74,15 @@ public class RoomController {
             if (keyword != null && !keyword.trim().isEmpty()) {
                 try {
                     // Lưu từ khóa này vào lịch sử (dù nó là tên đường hay tên phòng)
-                    searchHistoryService.saveSearch(keyword, lat, lng, radius);
+                    searchHistoryService.saveSearch(keyword, address, lat, lng, radius);
                 }catch (Exception e) {
                     System.out.println("LỖI LƯU LỊCH SỬ: " + e.getMessage());
                     e.printStackTrace(); // In chi tiết lỗi ra console để debug
                 }
+            }
+            else {
+                // 👇 THÊM DÒNG NÀY 👇
+                System.out.println("⚠️ Keyword bị Null hoặc Rỗng -> Không lưu lịch sử.");
             }
 
             // 2. Gọi Service (Lúc này biến tên là keyword, nghe hợp lý hơn hẳn)

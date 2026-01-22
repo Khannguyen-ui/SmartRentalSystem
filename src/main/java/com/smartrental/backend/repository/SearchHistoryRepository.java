@@ -14,7 +14,7 @@ public interface SearchHistoryRepository extends JpaRepository<SearchHistory, Lo
     List<SearchHistory> findByUserIdOrderBySearchedAtDesc(Long userId);
 
     // Kiểm tra xem đã tìm từ khóa này chưa (để tránh lưu trùng lặp)
-    Optional<SearchHistory> findByUserIdAndAddress(Long userId, String address);
+    Optional<SearchHistory> findByUserIdAndQueryText(Long userId, String queryText);
 
     // Xóa tất cả lịch sử của 1 user
     void deleteByUserId(Long userId);

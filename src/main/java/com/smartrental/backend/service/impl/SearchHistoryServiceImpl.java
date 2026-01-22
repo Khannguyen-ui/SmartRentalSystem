@@ -37,36 +37,23 @@ public class SearchHistoryServiceImpl implements SearchHistoryService {
 
     @Override
     @Transactional
-    public void saveSearch(String address, Double lat, Double lng, Double radius) {
+    public void saveSearch(String queryText, String address, Double lat, Double lng, Double radius) {
         User user = getCurrentUser();
+        if (user == null) return;
 
-        // Log để debug
-        if (user == null) {
-            System.out.println(">>> SAVE HISTORY: User chưa đăng nhập -> Bỏ qua.");
-            return;
-        }
-        if (address == null || address.trim().isEmpty()) {
-            return;
-        }
-
-        System.out.println(">>> SAVE HISTORY: Đang lưu từ khóa: " + address);
-
-        // --- SỬA ĐOẠN NÀY (Dùng findByUserIdAndAddress) ---
-        Optional<SearchHistory> existing = historyRepository.findByUserIdAndAddress(user.getId(), address);
+        // Tìm xem đã từng tìm tổ hợp này chưa
+        Optional<SearchHistory> existing = historyRepository.findByUserIdAndQueryText(user.getId(), queryText);
 
         if (existing.isPresent()) {
-            // Update cũ
             SearchHistory history = existing.get();
             history.setSearchedAt(LocalDateTime.now());
-            history.setLatitude(lat);
-            history.setLongitude(lng);
-            history.setRadius(radius);
+            history.setAddress(address); // Cập nhật địa chỉ mới nhất nếu có
             historyRepository.save(history);
         } else {
-            // Tạo mới
             SearchHistory newHistory = SearchHistory.builder()
                     .user(user)
-                    .address(address) // <-- SỬA: Dùng .address() thay vì .queryText()
+                    .queryText(queryText)
+                    .address(address)
                     .latitude(lat)
                     .longitude(lng)
                     .radius(radius)

@@ -3,6 +3,7 @@ package com.smartrental.backend.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 @Entity
 @Table(name = "search_histories")
@@ -16,10 +17,13 @@ public class SearchHistory {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private User user;
 
+    @Column(columnDefinition = "TEXT")
+    private String queryText;
     // Từ khóa tìm kiếm hoặc địa chỉ người dùng nhập (VD: "Quận 1, TP.HCM")
     @Column(columnDefinition = "TEXT")
     private String address;

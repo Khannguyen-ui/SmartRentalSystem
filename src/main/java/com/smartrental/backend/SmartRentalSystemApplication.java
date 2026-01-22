@@ -26,7 +26,7 @@ public class SmartRentalSystemApplication {
             // Fix 3: Lấp đầy rental_type = 'WHOLE' (mặc định) nếu null
             jdbcTemplate.update("UPDATE rooms SET rental_type = 'WHOLE' WHERE rental_type IS NULL");
 
-            System.out.println("✅ ĐÃ FIX TOÀN BỘ DỮ LIỆU CŨ THÀNH CÔNG!");
+
         };
     }
 }
