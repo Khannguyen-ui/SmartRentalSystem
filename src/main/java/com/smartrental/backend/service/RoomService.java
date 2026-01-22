@@ -22,7 +22,7 @@ public interface RoomService {
      * @param radius bán kính tính bằng mét
      * @return danh sách RoomResponseDTO
      */
-    List<RoomResponseDTO> searchNearby(double lat, double lng, double radius);
+    List<RoomResponseDTO> searchNearby(double lat, double lng, double radius ,String keyword);
 
     /**
      * Lấy tất cả phòng của chủ trọ đang đăng nhập
@@ -38,4 +38,5 @@ public interface RoomService {
 
     RoomResponseDTO getRoomDetail(Long id);
     RoomResponseDTO updateRoom(Long id, RoomUpdateDTO dto);
+    List<RoomResponseDTO> getRoomsByLandlord(Long landlordId);
 }

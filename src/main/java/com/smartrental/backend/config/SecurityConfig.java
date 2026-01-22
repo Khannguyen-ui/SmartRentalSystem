@@ -29,7 +29,8 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**", "/api/payment/**","/api/rooms/**", "/error","/ws/**").permitAll()
                                     .requestMatchers(HttpMethod.GET, "/api/admin/amenities").permitAll()
-
+                    .requestMatchers(HttpMethod.GET, "/api/rooms/landlord/**").permitAll()
+                    .requestMatchers(HttpMethod.GET, "/api/users/public-profile/**").permitAll()
                      // --- 3. [MỚI] CHO PHÉP API LẤY TOP CHỦ TRỌ ---
                     .requestMatchers(HttpMethod.GET, "/api/users/top-landlords").permitAll()
                     // ---------------------------------------------

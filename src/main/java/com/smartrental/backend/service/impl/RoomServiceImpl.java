@@ -145,8 +145,8 @@ public class RoomServiceImpl implements RoomService {
     }
 
     @Override
-    public List<RoomResponseDTO> searchNearby(double lat, double lng, double radius) {
-        List<Room> rooms = roomRepository.findRoomsNearby(lat, lng, radius);
+    public List<RoomResponseDTO> searchNearby(double lat, double lng, double radius,String keyword) {
+        List<Room> rooms = roomRepository.findRoomsNearby(lat, lng, radius,keyword);
         return rooms.stream().map(roomMapper::toResponse).collect(Collectors.toList());
     }
 
@@ -181,5 +181,23 @@ public class RoomServiceImpl implements RoomService {
         Room room = roomRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Phòng không tồn tại"));
         return roomMapper.toResponse(room);
+    }
+    @Override
+    public List<RoomResponseDTO> getRoomsByLandlord(Long landlordId) {
+        // 1. Lấy tất cả phòng của chủ trọ từ DB
+        List<Room> rooms = roomRepository.findByLandlordId(landlordId);
+
+        // 2. Lọc và Convert sang DTO
+        return rooms.stream()
+                .filter(r -> r.getStatus() == Room.Status.ACTIVE || r.getStatus() == Room.Status.FULL) // Chỉ lấy Active hoặc Full
+                .map(roomMapper::toResponse)
+                // Sắp xếp: ACTIVE lên trước, sau đó đến mới nhất
+                .sorted((r1, r2) -> {
+                    if (r1.getStatus().equals(r2.getStatus())) {
+                        return r2.getCreatedAt().compareTo(r1.getCreatedAt());
+                    }
+                    return "ACTIVE".equals(r1.getStatus()) ? -1 : 1;
+                })
+                .collect(Collectors.toList());
     }
 }

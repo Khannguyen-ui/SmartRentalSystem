@@ -3,6 +3,7 @@ package com.smartrental.backend.controller;
 import com.smartrental.backend.dto.request.RoomCreateDTO;
 import com.smartrental.backend.dto.request.RoomUpdateDTO; // Cần tạo DTO này
 import com.smartrental.backend.dto.response.RoomResponseDTO;
+import com.smartrental.backend.service.SearchHistoryService;
 import com.smartrental.backend.service.RoomService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -15,7 +16,7 @@ import java.util.List;
 @RequestMapping("/api/rooms")
 @RequiredArgsConstructor
 public class RoomController {
-
+    private final SearchHistoryService searchHistoryService;
     private final RoomService roomService;
 
     // 1. Đăng tin
@@ -56,19 +57,40 @@ public class RoomController {
     public ResponseEntity<?> searchRooms(
             @RequestParam(name = "lat") String latStr,
             @RequestParam(name = "lng") String lngStr,
-            @RequestParam(name = "radius", defaultValue = "50000") String radiusStr
+            @RequestParam(name = "radius", defaultValue = "50000") String radiusStr,
+
+            // 👇 SỬA DÒNG NÀY 👇
+            // Ý nghĩa: "Lấy tham số 'address' trên URL, nhưng gán vào biến tên là 'keyword'"
+            @RequestParam(name = "address", required = false) String keyword
     ) {
         try {
-            // Tự ép kiểu thủ công -> Bắt lỗi dễ dàng hơn
             Double lat = Double.parseDouble(latStr);
             Double lng = Double.parseDouble(lngStr);
             Double radius = Double.parseDouble(radiusStr);
 
-            return ResponseEntity.ok(roomService.searchNearby(lat, lng, radius));
+            // 1. Lưu lịch sử
+            if (keyword != null && !keyword.trim().isEmpty()) {
+                try {
+                    // Lưu từ khóa này vào lịch sử (dù nó là tên đường hay tên phòng)
+                    searchHistoryService.saveSearch(keyword, lat, lng, radius);
+                }catch (Exception e) {
+                    System.out.println("LỖI LƯU LỊCH SỬ: " + e.getMessage());
+                    e.printStackTrace(); // In chi tiết lỗi ra console để debug
+                }
+            }
+
+            // 2. Gọi Service (Lúc này biến tên là keyword, nghe hợp lý hơn hẳn)
+            return ResponseEntity.ok(roomService.searchNearby(lat, lng, radius, keyword));
+
         } catch (Exception e) {
-            e.printStackTrace(); // In lỗi ra log để xem
-            return ResponseEntity.badRequest().body("Lỗi tham số: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body("Lỗi: " + e.getMessage());
         }
+    }
+
+    @GetMapping("/landlord/{landlordId}")
+    public ResponseEntity<List<RoomResponseDTO>> getRoomsByLandlord(@PathVariable Long landlordId) {
+        return ResponseEntity.ok(roomService.getRoomsByLandlord(landlordId));
     }
 
 

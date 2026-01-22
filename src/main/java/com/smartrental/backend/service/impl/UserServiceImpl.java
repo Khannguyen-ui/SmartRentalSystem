@@ -172,6 +172,7 @@ public class UserServiceImpl implements UserService {
                 .bannerUrl(user.getBannerUrl())
                 .joinDate(user.getCreatedAt())
                 .lastActiveAt(user.getLastActiveAt())
+                .isIdentityVerified("VERIFIED".equals(user.getKycStatus()))
                 .totalRooms(totalRooms)
                 .successfulDeals(successfulDeals)
                 .totalReviews(totalReviews)
