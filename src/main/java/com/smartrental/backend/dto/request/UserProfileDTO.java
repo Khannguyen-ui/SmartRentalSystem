@@ -9,6 +9,7 @@ public class UserProfileDTO {
     private String phone;
     private String avatarUrl; // Link Cloudinary
     private String citizenId;
+    private String bannerUrl;
 
     // Thông tin lối sống (Quan trọng cho Matching)
     private LifestyleProfile lifestyleProfile;

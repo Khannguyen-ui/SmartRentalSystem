@@ -4,6 +4,7 @@ import com.smartrental.backend.dto.request.KycRequestDTO;
 import com.smartrental.backend.dto.request.LoginDTO;
 import com.smartrental.backend.dto.request.UserRegisterDTO;
 import com.smartrental.backend.dto.response.AuthResponse;
+import com.smartrental.backend.dto.response.LandlordPublicProfileDTO;
 import com.smartrental.backend.dto.response.LandlordStatsDTO;
 import com.smartrental.backend.dto.response.UserResponseDTO;
 
@@ -15,4 +16,5 @@ public interface UserService {
     List<LandlordStatsDTO> getTopLandlords(double lat, double lng, double radius);
     void upgradeToLandlord();
     void submitKyc(KycRequestDTO dto);
+    LandlordPublicProfileDTO getLandlordPublicProfile(Long landlordId);
 }

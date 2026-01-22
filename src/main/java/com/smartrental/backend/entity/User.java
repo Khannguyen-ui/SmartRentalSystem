@@ -31,9 +31,15 @@ public class User implements UserDetails {
     private String phone;
 
     private String avatarUrl; // Link ảnh đại diện
+    @Column(name = "banner_url")
+    private String bannerUrl;
 
     @Enumerated(EnumType.STRING)
     private Role role; // ADMIN, LANDLORD, TENANT
+
+        // ===> THÊM TRƯỜNG NÀY ĐỂ HIỂN THỊ "VỪA TRUY CẬP" <===
+    @Column(name = "last_active_at")
+    private LocalDateTime lastActiveAt;
 
     // --- JSONB: Profile Lối sống (Cho Matching) ---
     @JdbcTypeCode(SqlTypes.JSON)

@@ -1,21 +1,30 @@
 package com.smartrental.backend.controller;
 
+import java.util.HashSet;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import com.smartrental.backend.dto.request.KycRequestDTO;
 import com.smartrental.backend.dto.request.UserProfileDTO;
+import com.smartrental.backend.dto.response.LandlordPublicProfileDTO;
 import com.smartrental.backend.dto.response.LandlordStatsDTO;
 import com.smartrental.backend.dto.response.UserResponseDTO;
 import com.smartrental.backend.entity.User;
 import com.smartrental.backend.mapper.UserMapper;
+import com.smartrental.backend.repository.ContractRepository; // Mới thêm
+import com.smartrental.backend.repository.ReviewRepository;   // Mới thêm
+import com.smartrental.backend.repository.RoomRepository;     // Mới thêm
 import com.smartrental.backend.repository.UserRepository;
 import com.smartrental.backend.service.UserService;
-import com.smartrental.backend.service.impl.FptAiService; // 1. Import Service FPT
+import com.smartrental.backend.service.impl.FptAiService;
+
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.MediaType; // 2. Import MediaType
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile; // 3. Import MultipartFile
-import com.smartrental.backend.dto.request.KycRequestDTO;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
@@ -28,9 +37,9 @@ public class UserController {
     private final UserRepository userRepository;
     private final UserMapper userMapper;
     private final UserService userService;
-
-    // 4. Inject FptAiService (Lombok sẽ tự tạo Constructor vì có final)
     private final FptAiService fptAiService;
+
+
 
     // --- 1. Lấy thông tin cá nhân (Profile) ---
     @GetMapping("/profile")
@@ -50,6 +59,7 @@ public class UserController {
         if(dto.getFullName() != null) user.setFullName(dto.getFullName());
         if(dto.getPhone() != null) user.setPhone(dto.getPhone());
         if(dto.getAvatarUrl() != null) user.setAvatarUrl(dto.getAvatarUrl());
+        if(dto.getBannerUrl() != null) user.setBannerUrl(dto.getBannerUrl());
         if(dto.getCitizenId() != null) user.setCitizenId(dto.getCitizenId());
 
         // Cập nhật Lối sống (JSON)
@@ -78,24 +88,26 @@ public class UserController {
     }
 
     // --- 5. API E-KYC (OCR - Trích xuất CCCD bằng FPT.AI) ---
-    // Frontend gửi form-data: key="file", value=[File Ảnh]
     @PostMapping(value = "/extract-id-card", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> extractIdCardInfo(@RequestParam("file") MultipartFile file) {
         try {
-            // Gọi Service FPT.AI để xử lý
             Map<String, String> info = fptAiService.scanIdCard(file);
-
-            // Trả về JSON: { "citizenId": "001...", "fullName": "NGUYEN VAN A" }
             return ResponseEntity.ok(info);
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.badRequest().body(Map.of("error", "Lỗi đọc ảnh: " + e.getMessage()));
         }
     }
+
     @PostMapping("/kyc")
     public ResponseEntity<?> submitKyc(@RequestBody @Valid KycRequestDTO dto) {
-        userService.submitKyc(dto); // Hàm này phải có trong UserServiceImpl (đã làm ở các bước trước)
+        userService.submitKyc(dto);
         return ResponseEntity.ok(Map.of("message", "Gửi yêu cầu xác minh thành công!"));
     }
 
+    @GetMapping("/public-profile/{id}")
+    public ResponseEntity<LandlordPublicProfileDTO> getLandlordPublicProfile(@PathVariable Long id) {
+        // Controller chỉ làm 1 việc: Gọi Service và trả về kết quả
+        return ResponseEntity.ok(userService.getLandlordPublicProfile(id));
+    }
 }

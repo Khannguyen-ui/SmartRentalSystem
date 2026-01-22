@@ -27,4 +27,9 @@ public interface RoomRepository extends JpaRepository<Room, Long> {
 
     List<Room> findByLandlordId(Long landlordId);
     Optional<Room> findByIdAndLandlordId(Long id, Long landlordId);
+    // Đếm tổng số phòng
+    int countByLandlordId(Long landlordId);
+
+    @Query("SELECT r.address FROM Room r WHERE r.landlord.id = :landlordId")
+    List<String> findAddressesByLandlordId(@Param("landlordId") Long landlordId);
 }

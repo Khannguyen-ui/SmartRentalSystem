@@ -2,6 +2,7 @@ package com.smartrental.backend.controller;
 
 import com.smartrental.backend.dto.request.ContractCreateDTO;
 import com.smartrental.backend.dto.response.ContractResponseDTO;
+import com.smartrental.backend.dto.response.LandlordCustomerDTO;
 import com.smartrental.backend.service.ContractService;
 import com.smartrental.backend.service.PdfService; // Import Service mới
 import jakarta.validation.Valid;
@@ -12,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/contracts")
@@ -37,5 +39,9 @@ public class ContractController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=contract_" + id + ".pdf")
                 .contentType(MediaType.APPLICATION_PDF)
                 .body(pdfBytes);
+    }
+    @GetMapping("/landlord/customers")
+    public ResponseEntity<List<LandlordCustomerDTO>> getLandlordCustomers() {
+        return ResponseEntity.ok(contractService.getCustomersByLandlord());
     }
 }

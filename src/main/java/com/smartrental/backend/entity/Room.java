@@ -31,6 +31,7 @@ public class Room {
     private Double area;      // Diện tích
     private String address;
 
+
     @Column(name = "approved_at")
     private LocalDateTime approvedAt;
 

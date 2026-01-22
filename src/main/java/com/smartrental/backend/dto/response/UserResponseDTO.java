@@ -12,4 +12,5 @@ public class UserResponseDTO {
     private String phone;
     private String role;
     private BigDecimal walletBalance;
+    private String bannerUrl;
 }
