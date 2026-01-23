@@ -18,7 +18,7 @@ public class VNPayServiceImpl implements VNPayService {
         String vnp_Version = "2.1.0";
         String vnp_Command = "pay";
 
-        // Tạo mã giao dịch unique (TxnRef)
+        // Tạo mã giao dịch unique (TxnRef) 
         String vnp_TxnRef = VNPayConfig.getRandomNumber(8);
         String vnp_IpAddr = VNPayConfig.getIpAddress(request);
         String vnp_TmnCode = VNPayConfig.vnp_TmnCode;
