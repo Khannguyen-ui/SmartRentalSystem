@@ -25,6 +25,11 @@ public class Room {
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    @Column(name = "search_vector", columnDefinition = "tsvector", insertable = false, updatable = false)
+    private String searchVector;
+
+
+
     private BigDecimal price; // Giá hiển thị
     private BigDecimal deposit; // Tiền cọc
 
@@ -119,6 +124,7 @@ public class Room {
         for (Review r : reviews) sum += r.getRating();
         return sum / reviews.size();
     }
+
 
     // --- CÁC ENUM ---
     public enum RentalType { WHOLE, SHARED }

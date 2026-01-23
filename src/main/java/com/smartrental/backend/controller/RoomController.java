@@ -2,9 +2,17 @@ package com.smartrental.backend.controller;
 
 import com.smartrental.backend.dto.request.RoomCreateDTO;
 import com.smartrental.backend.dto.request.RoomUpdateDTO; // Cần tạo DTO này
+import com.smartrental.backend.dto.response.PriceHistoryDTO;
+import com.smartrental.backend.dto.response.PriceTrendResponse;
 import com.smartrental.backend.dto.response.RoomResponseDTO;
 import com.smartrental.backend.service.SearchHistoryService;
 import com.smartrental.backend.service.RoomService;
+import com.smartrental.backend.service.PriceStatisticsService; // Thêm dòng này
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -18,6 +26,7 @@ import java.util.List;
 public class RoomController {
     private final SearchHistoryService searchHistoryService;
     private final RoomService roomService;
+    private final PriceStatisticsService priceStatisticsService;
 
     // 1. Đăng tin
     @PostMapping
@@ -55,41 +64,30 @@ public class RoomController {
     // 6. Tìm kiếm (Giữ nguyên)
     @GetMapping("/search")
     public ResponseEntity<?> searchRooms(
-            @RequestParam(name = "lat") String latStr,
-            @RequestParam(name = "lng") String lngStr,
-            @RequestParam(name = "radius", defaultValue = "50000") String radiusStr,
-
-            // 👇 SỬA DÒNG NÀY 👇
-            // Ý nghĩa: "Lấy tham số 'address' trên URL, nhưng gán vào biến tên là 'keyword'"
+            @RequestParam(name = "lat") Double lat,
+            @RequestParam(name = "lng") Double lng,
+            @RequestParam(name = "radius", defaultValue = "50000") Double radius,
             @RequestParam(name = "keyword", required = false) String keyword,
-            @RequestParam(name = "address", required = false) String address
+            @RequestParam(name = "address", required = false) String address,
+            // 👇 THÊM 2 THAM SỐ NÀY 👇
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "8") int size
     ) {
-        System.out.println("📢 CHECK DEBUG - KEYWORD NHẬN ĐƯỢC LÀ: " + keyword);
         try {
-            Double lat = Double.parseDouble(latStr);
-            Double lng = Double.parseDouble(lngStr);
-            Double radius = Double.parseDouble(radiusStr);
-
-            // 1. Lưu lịch sử
+            // 1. Lưu lịch sử (Giữ nguyên logic của bạn)
             if (keyword != null && !keyword.trim().isEmpty()) {
-                try {
-                    // Lưu từ khóa này vào lịch sử (dù nó là tên đường hay tên phòng)
-                    searchHistoryService.saveSearch(keyword, address, lat, lng, radius);
-                }catch (Exception e) {
-                    System.out.println("LỖI LƯU LỊCH SỬ: " + e.getMessage());
-                    e.printStackTrace(); // In chi tiết lỗi ra console để debug
-                }
-            }
-            else {
-                // 👇 THÊM DÒNG NÀY 👇
-                System.out.println("⚠️ Keyword bị Null hoặc Rỗng -> Không lưu lịch sử.");
+                searchHistoryService.saveSearch(keyword, address, lat, lng, radius);
             }
 
-            // 2. Gọi Service (Lúc này biến tên là keyword, nghe hợp lý hơn hẳn)
-            return ResponseEntity.ok(roomService.searchNearby(lat, lng, radius, keyword));
+            // 2. Tạo đối tượng Pageable
+            Pageable pageable = PageRequest.of(page, size);
+
+            // 3. Gọi Service và trả về Page thay vì List
+            Page<RoomResponseDTO> result = roomService.searchNearby(lat, lng, radius, keyword, pageable);
+
+            return ResponseEntity.ok(result);
 
         } catch (Exception e) {
-            e.printStackTrace();
             return ResponseEntity.badRequest().body("Lỗi: " + e.getMessage());
         }
     }
@@ -97,6 +95,12 @@ public class RoomController {
     @GetMapping("/landlord/{landlordId}")
     public ResponseEntity<List<RoomResponseDTO>> getRoomsByLandlord(@PathVariable Long landlordId) {
         return ResponseEntity.ok(roomService.getRoomsByLandlord(landlordId));
+
+    }
+    @GetMapping("/{id}/price-history")
+// Thay đổi List<PriceHistoryDTO> thành PriceTrendResponse
+    public ResponseEntity<PriceTrendResponse> getPriceHistory(@PathVariable Long id) {
+        return ResponseEntity.ok(priceStatisticsService.getPriceHistoryForRoom(id));
     }
 
 

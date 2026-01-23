@@ -17,6 +17,8 @@ import org.locationtech.jts.geom.PrecisionModel;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -145,9 +147,12 @@ public class RoomServiceImpl implements RoomService {
     }
 
     @Override
-    public List<RoomResponseDTO> searchNearby(double lat, double lng, double radius,String keyword) {
-        List<Room> rooms = roomRepository.findRoomsNearby(lat, lng, radius,keyword);
-        return rooms.stream().map(roomMapper::toResponse).collect(Collectors.toList());
+    public Page<RoomResponseDTO> searchNearby(double lat, double lng, double radius, String keyword, Pageable pageable) {
+        // 1. Gọi Repository kèm pageable
+        Page<Room> rooms = roomRepository.findRoomsNearby(lat, lng, radius, keyword, pageable);
+
+        // 2. Sử dụng method map của Page để chuyển đổi Entity sang DTO
+        return rooms.map(roomMapper::toResponse);
     }
 
     @Override

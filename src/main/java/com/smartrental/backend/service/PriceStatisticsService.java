@@ -1,9 +1,8 @@
-package com.smartrental.backend.service; // Đúng package service
+package com.smartrental.backend.service;
 
-import com.smartrental.backend.dto.response.PriceHistoryDTO;
-import java.util.List;
+import com.smartrental.backend.dto.response.PriceTrendResponse;
 
 public interface PriceStatisticsService {
-    // Tên phương thức phải khớp chính xác
-    List<PriceHistoryDTO> getPriceHistoryForRoom(Long roomId);
+    // Chỉ giữ lại một phương thức duy nhất này
+    PriceTrendResponse getPriceHistoryForRoom(Long roomId);
 }

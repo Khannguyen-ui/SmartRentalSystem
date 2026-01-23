@@ -20,29 +20,33 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthFilter;
     
     // Spring sẽ tự động tìm AuthenticationProvider từ bên AppConfig sang đây
-    private final AuthenticationProvider authenticationProvider; 
+    private final AuthenticationProvider authenticationProvider;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .csrf(AbstractHttpConfigurer::disable)
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**", "/api/payment/**","/api/rooms/**", "/error","/ws/**").permitAll()
-                                    .requestMatchers(HttpMethod.GET, "/api/admin/amenities").permitAll()
-                    .requestMatchers(HttpMethod.GET, "/api/rooms/landlord/**").permitAll()
-                    .requestMatchers(HttpMethod.GET, "/api/users/public-profile/**").permitAll()
-                     // --- 3. [MỚI] CHO PHÉP API LẤY TOP CHỦ TRỌ ---
-                    .requestMatchers(HttpMethod.GET, "/api/users/top-landlords").permitAll()
-                    // ---------------------------------------------
+                .csrf(AbstractHttpConfigurer::disable)
+                .authorizeHttpRequests(auth -> auth
+                        // 1. Các API công khai hoàn toàn
+                        .requestMatchers("/api/auth/**", "/api/payment/**", "/error", "/ws/**").permitAll()
 
+                        // 2. [QUAN TRỌNG] Chỉ cho phép GET công khai đối với các thông tin phòng
+                        // Điều này giúp: Xem chi tiết, Tìm kiếm, và Lịch sử giá không cần đăng nhập
+                        .requestMatchers(HttpMethod.GET, "/api/rooms/**").permitAll()
 
-                    .anyRequest().authenticated()
-            )
-            .sessionManagement(session -> session
-                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-            )
-            .authenticationProvider(authenticationProvider) // Sử dụng biến được inject vào
-            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                        .requestMatchers(HttpMethod.GET, "/api/admin/amenities").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/users/public-profile/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/users/top-landlords").permitAll()
+
+                        // 3. Các yêu cầu còn lại (POST, PUT, DELETE) bắt buộc phải đăng nhập
+                        // Ví dụ: Đăng tin mới, cập nhật giá, xóa phòng...
+                        .anyRequest().authenticated()
+                )
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                )
+                .authenticationProvider(authenticationProvider)
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
