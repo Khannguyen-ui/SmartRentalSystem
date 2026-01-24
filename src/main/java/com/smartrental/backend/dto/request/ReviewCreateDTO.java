@@ -15,7 +15,7 @@ public class ReviewCreateDTO {
     private Long tenantId;
 
     @Min(1) @Max(5)
-    private Integer rating;
+    private Double rating;
 
     private String comment;
     private List<String> reviewImages; // Danh sách link ảnh

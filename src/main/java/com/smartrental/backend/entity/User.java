@@ -58,6 +58,16 @@ public class User implements UserDetails {
 
     private String kycStatus; // VERIFIED, PENDING...
 
+    @ManyToOne
+    @JoinColumn(name = "current_membership_id")
+    private ServicePackage membershipPackage;
+
+    // 2. Thêm trường ngày hết hạn hội viên
+    private LocalDateTime membershipExpiresAt;
+
+    // Nếu bạn muốn lưu tên hạng hội viên dạng String như code cũ (tùy chọn)
+    private String membershipLevel;
+
     // --- (MỚI) TRẠNG THÁI HOẠT ĐỘNG CHO ADMIN QUẢN LÝ ---
     @Column(name = "is_active")
     private boolean isActive; // true = Hoạt động, false = Bị khóa

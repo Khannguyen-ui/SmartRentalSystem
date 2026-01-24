@@ -20,6 +20,8 @@ public class Transaction {
     @JoinColumn(name = "user_id")
     private User user;
 
+    private String description;
+
     private BigDecimal amount; // Số tiền (+ là nạp, - là mua gói)
 
     private String type; // DEPOSIT (Nạp tiền), POST_FEE (Phí đăng tin)

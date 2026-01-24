@@ -41,5 +41,6 @@ public interface RoomService {
     RoomResponseDTO getRoomDetail(Long id);
     RoomResponseDTO updateRoom(Long id, RoomUpdateDTO dto);
     List<RoomResponseDTO> getRoomsByLandlord(Long landlordId);
+    Page<RoomResponseDTO> getRoomsWithVideo(Pageable pageable);
 
 }

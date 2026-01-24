@@ -51,7 +51,7 @@ public class RoomCreateDTO {
     private String videoUrl; // Link video Cloudinary (Optional)
 
     @NotNull(message = "Phải chọn gói đăng tin")
-    private Integer servicePackageId; // ID gói cước để trừ tiền
+    private Long servicePackageId;// ID gói cước để trừ tiền
 
     // ------------------------------------
 

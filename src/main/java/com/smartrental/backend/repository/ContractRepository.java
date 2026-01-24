@@ -11,7 +11,7 @@ import java.util.Optional;
 
 @Repository
 public interface ContractRepository extends JpaRepository<Contract, Long> {
-
+    boolean existsByTenantIdAndRoomId(Long tenantId, Long roomId);
     // Đếm số hợp đồng đang Active của 1 phòng (Dùng để check khóa phòng Nguyên căn)
     @Query("SELECT COUNT(c) FROM Contract c WHERE c.room.id = :roomId AND c.status = 'ACTIVE'")
     long countActiveContractsByRoom(Long roomId);

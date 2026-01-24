@@ -5,25 +5,29 @@ import lombok.*;
 import java.math.BigDecimal;
 
 @Entity
-@Table(name = "service_packages")
 @Data
-@Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class ServicePackage {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
+    private Long id; // Đổi thành Long để khớp với Repository
 
-    @Column(nullable = false)
-    private String name; // VD: Gói Tuần, Gói VIP
+    private String name;
+    private BigDecimal price;
+    private Integer durationDays;
 
-    @Column(nullable = false)
-    private BigDecimal price; // VD: 20000
+    private Double discountPercent;
 
-    @Column(name = "duration_days", nullable = false)
-    private Integer durationDays; // VD: 7
+    // Thêm trường này để hết lỗi setPriorityLevel
+    private Integer priorityLevel;
 
-    @Column(name = "priority_level")
-    private Integer priorityLevel; // 1: Thường, 5: VIP
+    @Enumerated(EnumType.STRING)
+    private PackageType type; // MEMBERSHIP hoặc ROOM_PROMOTION
+
+    private String description;
+
+    @Builder.Default
+    private Boolean active = true;
 }

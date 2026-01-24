@@ -96,7 +96,11 @@ public class Room {
     private LocalDateTime expirationDate; // Ngày hết hạn tin đăng
 
     @Column(name = "service_package_id")
-    private Integer servicePackageId; // Gói cước đã mua
+    private Long servicePackageId;
+
+
+    private String packageType; // "NORMAL", "VIP1", "VIP2"
+    private LocalDateTime promotionExpiration;
 
     // --- QUAN HỆ ---
 
@@ -125,6 +129,15 @@ public class Room {
         return sum / reviews.size();
     }
 
+    @ManyToOne
+    @JoinColumn(name = "service_package_id", insertable = false, updatable = false)
+    private ServicePackage servicePackage;
+
+    // Thêm vào trong class Room
+    @Builder.Default
+    private Double averageRating = 0.0; // Điểm trung bình (VD: 4.5)
+    @Builder.Default
+    private Integer totalReviews = 0;   // Tổng số lượt đánh giá
 
     // --- CÁC ENUM ---
     public enum RentalType { WHOLE, SHARED }

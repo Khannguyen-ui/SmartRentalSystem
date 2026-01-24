@@ -25,7 +25,7 @@ public class Review {
     @JoinColumn(name = "room_id")
     private Room room;
 
-    private Integer rating; // 1-5 sao
+    private Double rating;
 
     @Column(columnDefinition = "TEXT")
     private String comment;
@@ -35,6 +35,9 @@ public class Review {
     private List<String> reviewImages; // Mảng link Cloudinary
 
     private LocalDateTime createdAt;
+
+    private String landlordReply; // Nội dung phản hồi của chủ trọ
+    private LocalDateTime repliedAt; // Thời gian phản hồi
 
     @PrePersist
     protected void onCreate() {

@@ -11,40 +11,33 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/admin")
+// 🟢 GIỮ NGUYÊN ĐƯỜNG DẪN NÀY ĐỂ ĐẢM BẢO TÍNH CẤU TRÚC
+@RequestMapping("/api/admin/master-data")
 @RequiredArgsConstructor
-// 1. XÓA DÒNG @PreAuthorize("hasRole('ADMIN')") Ở ĐÂY ĐI
 public class AdminMasterDataController {
 
     private final AdminMasterDataServiceImpl masterDataService;
 
     // --- API TIỆN ÍCH ---
 
-    // 2. Cho phép User/Landlord xem danh sách tiện ích
     @GetMapping("/amenities")
-//    @PreAuthorize("isAuthenticated()") // Ai đăng nhập rồi cũng xem được
+    // 🟢 Cho phép tất cả người dùng đã đăng nhập xem tiện ích
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<AmenitiesRef>> getAllAmenities() {
         return ResponseEntity.ok(masterDataService.getAllAmenities());
     }
 
     @PostMapping("/amenities")
-    @PreAuthorize("hasRole('ADMIN')") // Chỉ Admin được thêm
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<AmenitiesRef> createAmenity(@RequestBody AmenitiesRef amenity) {
         return ResponseEntity.ok(masterDataService.createAmenity(amenity));
     }
 
-    @DeleteMapping("/amenities/{id}")
-    @PreAuthorize("hasRole('ADMIN')") // Chỉ Admin được xóa
-    public ResponseEntity<?> deleteAmenity(@PathVariable Integer id) {
-        masterDataService.deleteAmenity(id);
-        return ResponseEntity.ok("Đã xóa tiện ích");
-    }
-
     // --- API GÓI CƯỚC ---
 
-    // 3. Cho phép Chủ trọ xem gói cước để mua
     @GetMapping("/packages")
-    @PreAuthorize("isAuthenticated()")
+    // 🟢 QUAN TRỌNG: Cho phép cả ADMIN và LANDLORD xem danh sách gói cước
+    @PreAuthorize("hasAnyRole('ADMIN', 'LANDLORD')")
     public ResponseEntity<List<ServicePackage>> getAllPackages() {
         return ResponseEntity.ok(masterDataService.getAllPackages());
     }
@@ -57,13 +50,13 @@ public class AdminMasterDataController {
 
     @PutMapping("/packages/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ServicePackage> updatePackage(@PathVariable Integer id, @RequestBody ServicePackage pkg) {
+    public ResponseEntity<ServicePackage> updatePackage(@PathVariable Long id, @RequestBody ServicePackage pkg) {
         return ResponseEntity.ok(masterDataService.updatePackage(id, pkg));
     }
 
     @DeleteMapping("/packages/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> deletePackage(@PathVariable Integer id) {
+    public ResponseEntity<?> deletePackage(@PathVariable Long id) {
         masterDataService.deletePackage(id);
         return ResponseEntity.ok("Đã xóa gói cước");
     }

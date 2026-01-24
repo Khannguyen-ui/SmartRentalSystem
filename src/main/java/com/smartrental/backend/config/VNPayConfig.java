@@ -11,16 +11,14 @@ import java.util.*;
 public class VNPayConfig {
     public static String vnp_PayUrl = "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html";
 
-    // LƯU Ý QUAN TRỌNG:
-    // Nếu test trên điện thoại thật hoặc máy ảo Android, "localhost" sẽ không chạy được.
-    // Hãy đổi thành IP LAN của máy tính (VD: http://192.168.1.5:8080/api/payment/vnpay-return)
+
     public static String vnp_ReturnUrl = "http://localhost:8080/api/payment/vnpay-return";
 
     public static String vnp_TmnCode = "OB95XN6Y"; // Mã Website của bạn
     public static String vnp_HashSecret = "GLT1V41JVEREAQXWLVQXAS86C3CKPWXD"; // Chuỗi bí mật
     public static String vnp_ApiUrl = "https://sandbox.vnpayment.vn/merchant_webapi/api/transaction";
 
-    // --- 1. THÊM HÀM NÀY ĐỂ CHECK CHỮ KÝ (QUAN TRỌNG) ---
+
     public static String hashAllFields(Map fields) {
         List fieldNames = new ArrayList(fields.keySet());
         Collections.sort(fieldNames);

@@ -64,8 +64,8 @@ public class RoomController {
     // 6. Tìm kiếm (Giữ nguyên)
     @GetMapping("/search")
     public ResponseEntity<?> searchRooms(
-            @RequestParam(name = "lat") Double lat,
-            @RequestParam(name = "lng") Double lng,
+            @RequestParam(name = "lat",required = false) Double lat,
+            @RequestParam(name = "lng",required = false) Double lng,
             @RequestParam(name = "radius", defaultValue = "50000") Double radius,
             @RequestParam(name = "keyword", required = false) String keyword,
             @RequestParam(name = "address", required = false) String address,
@@ -101,6 +101,15 @@ public class RoomController {
 // Thay đổi List<PriceHistoryDTO> thành PriceTrendResponse
     public ResponseEntity<PriceTrendResponse> getPriceHistory(@PathVariable Long id) {
         return ResponseEntity.ok(priceStatisticsService.getPriceHistoryForRoom(id));
+    }
+    // 7. Lấy danh sách tin có Video (MỚI)
+    @GetMapping("/videos")
+    public ResponseEntity<Page<RoomResponseDTO>> getRoomsWithVideo(
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "4") int size
+    ) {
+        Pageable pageable = PageRequest.of(page, size);
+        return ResponseEntity.ok(roomService.getRoomsWithVideo(pageable));
     }
 
 

@@ -28,8 +28,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtUtils jwtUtils;
     private final UserDetailsService userDetailsService;
-
-    // 1. Inject thêm Repository để cập nhật giờ (Lombok sẽ tự tạo Constructor)
     private final UserRepository userRepository;
 
     @Override
@@ -39,24 +37,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
         final String authHeader = request.getHeader("Authorization");
-        final String jwt;
-        final String userEmail;
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        jwt = authHeader.substring(7);
+        final String jwt = authHeader.substring(7);
+        final String userEmail;
 
-        // --- ĐOẠN CODE CŨ CỦA BẠN (GIỮ NGUYÊN) ---
         try {
             userEmail = jwtUtils.extractUsername(jwt);
         } catch (Exception e) {
             filterChain.doFilter(request, response);
             return;
         }
-        // ----------------------------------------
 
         if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
@@ -70,35 +65,24 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authToken);
 
-                // 2. [MỚI] GỌI HÀM CẬP NHẬT TRẠNG THÁI HOẠT ĐỘNG
-                updateLastActiveTime(userEmail);
+                // TỐI ƯU: Ép kiểu và cập nhật trực tiếp, tránh query lại database
+                if (userDetails instanceof User user) {
+                    updateLastActiveTimeOptimized(user);
+                }
             }
         }
         filterChain.doFilter(request, response);
     }
 
-    /**
-     * 3. [MỚI] Hàm cập nhật thời gian active cuối cùng.
-     * Cơ chế Throttling: Chỉ update DB nếu lần cuối cách đây > 2 phút
-     * để tránh spam database làm chậm app.
-     */
-    private void updateLastActiveTime(String email) {
-        try {
-            Optional<User> userOpt = userRepository.findByEmail(email);
-            if (userOpt.isPresent()) {
-                User user = userOpt.get();
-                LocalDateTime now = LocalDateTime.now();
-                LocalDateTime lastActive = user.getLastActiveAt();
+    private void updateLastActiveTimeOptimized(User user) {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime lastActive = user.getLastActiveAt();
 
-                // Nếu chưa từng active HOẶC lần active cuối > 2 phút trước thì mới lưu
-                if (lastActive == null || ChronoUnit.MINUTES.between(lastActive, now) >= 2) {
-                    user.setLastActiveAt(now);
-                    userRepository.save(user);
-                }
-            }
-        } catch (Exception e) {
-            // Log lỗi nhẹ (console) nhưng không được làm chết request của user
-            System.err.println("Lỗi cập nhật LastActive (không ảnh hưởng luồng chính): " + e.getMessage());
+        // Throttling: Chỉ lưu nếu cách nhau >= 2 phút
+        if (lastActive == null || ChronoUnit.MINUTES.between(lastActive, now) >= 2) {
+            user.setLastActiveAt(now);
+            // Hibernate sẽ thực hiện lệnh UPDATE vì object này đã có ID (Attached/Persistent)
+            userRepository.save(user);
         }
     }
 }

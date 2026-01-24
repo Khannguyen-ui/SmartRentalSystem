@@ -48,7 +48,7 @@ public class AdminMasterDataServiceImpl {
     }
 
     @Transactional
-    public ServicePackage updatePackage(Integer id, ServicePackage pkgDetails) {
+    public ServicePackage updatePackage(Long id, ServicePackage pkgDetails) {
         ServicePackage pkg = packageRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Gói cước không tồn tại"));
 
@@ -61,7 +61,7 @@ public class AdminMasterDataServiceImpl {
     }
 
     @Transactional
-    public void deletePackage(Integer id) {
+    public void deletePackage(Long id) {
         packageRepository.deleteById(id);
     }
 }

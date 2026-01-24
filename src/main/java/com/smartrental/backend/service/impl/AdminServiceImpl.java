@@ -6,6 +6,7 @@ import com.smartrental.backend.dto.response.RoomResponseDTO; // Import DTO
 import com.smartrental.backend.entity.*;
 import com.smartrental.backend.repository.*;
 import com.smartrental.backend.service.AdminService;
+import com.smartrental.backend.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -27,6 +28,7 @@ public class AdminServiceImpl implements AdminService {
     private final TransactionRepository transactionRepository;
     private final PasswordEncoder passwordEncoder;
     private final RoomMapper roomMapper;
+    private final NotificationService notificationService;
 
     @Override
     public List<RoomResponseDTO> getPendingRooms() {
@@ -46,45 +48,71 @@ public class AdminServiceImpl implements AdminService {
                 .orElseThrow(() -> new RuntimeException("Phòng không tồn tại"));
 
         if (room.getStatus() == Room.Status.ACTIVE) {
-            throw new RuntimeException("Lỗi: Phòng này ĐÃ ĐƯỢC DUYỆT và đang hoạt động rồi!");
+            throw new RuntimeException("Lỗi: Phòng này đã hoạt động!");
         }
 
         User landlord = userRepository.findById(room.getLandlord().getId())
                 .orElseThrow(() -> new RuntimeException("Chủ trọ không tồn tại"));
 
         if (dto.isApproved()) {
-            if (room.getServicePackageId() == null) {
-                throw new RuntimeException("Phòng này chưa chọn gói dịch vụ (ID null)!");
-            }
             ServicePackage servicePackage = packageRepository.findById(room.getServicePackageId())
                     .orElseThrow(() -> new RuntimeException("Gói cước không hợp lệ"));
 
-            if (landlord.getWalletBalance().compareTo(servicePackage.getPrice()) < 0) {
-                throw new RuntimeException("Chủ trọ không đủ tiền!");
+            // LOGIC NÂNG CAO: Kiểm tra giảm giá nếu là Hội viên
+            BigDecimal finalPrice = servicePackage.getPrice();
+            if (landlord.getMembershipPackage() != null) {
+                double discount = landlord.getMembershipPackage().getDiscountPercent() / 100.0;
+                BigDecimal discountAmount = finalPrice.multiply(BigDecimal.valueOf(discount));
+                finalPrice = finalPrice.subtract(discountAmount);
+                System.out.println(">>> Hội viên được giảm giá: " + discountAmount);
             }
 
-            landlord.setWalletBalance(landlord.getWalletBalance().subtract(servicePackage.getPrice()));
+            if (landlord.getWalletBalance().compareTo(finalPrice) < 0) {
+                throw new RuntimeException("Chủ trọ không đủ tiền (Cần: " + finalPrice + ")");
+            }
+
+            // Trừ tiền
+            landlord.setWalletBalance(landlord.getWalletBalance().subtract(finalPrice));
             userRepository.save(landlord);
 
-            Transaction transaction = Transaction.builder()
+            // Lưu giao dịch
+            Transaction transaction = transactionRepository.save(Transaction.builder()
                     .user(landlord)
-                    .amount(servicePackage.getPrice().negate())
+                    .amount(finalPrice.negate())
                     .type("POST_FEE")
                     .status("SUCCESS")
                     .vnpayCode("INTERNAL_" + System.currentTimeMillis())
                     .createdAt(LocalDateTime.now())
-                    .build();
-            transactionRepository.save(transaction);
+                    .build());
 
+            // Cập nhật trạng thái phòng
             room.setStatus(Room.Status.ACTIVE);
             room.setApprovedAt(LocalDateTime.now());
+
+            // Tính ngày hết hạn
             LocalDateTime expiryBase = (room.getExpirationDate() != null && room.getExpirationDate().isAfter(LocalDateTime.now()))
-                    ? room.getExpirationDate()
-                    : LocalDateTime.now();
+                    ? room.getExpirationDate() : LocalDateTime.now();
             room.setExpirationDate(expiryBase.plusDays(servicePackage.getDurationDays()));
-            System.out.println(">>> DUYỆT THÀNH CÔNG! ĐÃ TRỪ TIỀN.");
+
+            // 2. GỬI THÔNG BÁO CHO CHỦ TRỌ
+            notificationService.sendNotification(
+                    landlord,
+                    "Tin đăng đã được duyệt",
+                    "Phòng '" + room.getTitle() + "' của bạn đã được phê duyệt và hiển thị trên hệ thống.",
+                    NotificationType.SYSTEM,
+                    room.getId()
+            );
+
         } else {
             room.setStatus(Room.Status.REJECTED);
+            // Gửi thông báo từ chối
+            notificationService.sendNotification(
+                    landlord,
+                    "Tin đăng bị từ chối",
+                    "Rất tiếc, tin đăng '" + room.getTitle() + "' không được duyệt. Lý do: " + dto.getReason(),
+                    NotificationType.SYSTEM,
+                    room.getId()
+            );
         }
         roomRepository.save(room);
     }

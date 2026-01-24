@@ -19,12 +19,15 @@ public interface RoomRepository extends JpaRepository<Room, Long> {
     List<Room> findByStatus(Room.Status status);
 
     // --- CẬP NHẬT QUERY: Tìm kiếm theo Bán kính + Từ khóa (Title/Address) ---
-    @Query(value = "SELECT * FROM rooms r " +
+    @Query(value = "SELECT r.* FROM rooms r " +
+            "LEFT JOIN service_package sp ON r.service_package_id = sp.id " +
             "WHERE r.status = 'ACTIVE' " +
             "AND ST_DWithin(r.location, ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326), :radius) " +
             "AND (:keyword IS NULL OR :keyword = '' OR " +
-            "r.search_vector @@ plainto_tsquery('simple', lower(:keyword)))",
-            // countQuery phải có phần WHERE giống hệt query chính
+            "r.search_vector @@ plainto_tsquery('simple', lower(:keyword))) " +
+            // Sắp xếp: Nếu còn hạn (expiration_date >= NOW) thì lấy priority của gói, ngược lại coi như = 0
+            "ORDER BY (CASE WHEN r.expiration_date >= NOW() THEN COALESCE(sp.priority_level, 0) ELSE 0 END) DESC, " +
+            "r.created_at DESC",
             countQuery = "SELECT count(*) FROM rooms r " +
                     "WHERE r.status = 'ACTIVE' " +
                     "AND ST_DWithin(r.location, ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326), :radius) " +
@@ -70,4 +73,14 @@ public interface RoomRepository extends JpaRepository<Room, Long> {
 
     @Query("SELECT r.address FROM Room r WHERE r.landlord.id = :landlordId")
     List<String> findAddressesByLandlordId(@Param("landlordId") Long landlordId);
+    @Query("SELECT r FROM Room r WHERE r.videoUrl IS NOT NULL AND r.status = 'ACTIVE'")
+    Page<Room> findAllWithVideo(Pageable pageable);
+
+    @Query(value = "SELECT r.* FROM rooms r " +
+            "LEFT JOIN service_package sp ON r.service_package_id = sp.id " +
+            "WHERE r.status = 'ACTIVE' " +
+            "AND (:keyword IS NULL OR r.title ILIKE %:keyword%) " +
+            "ORDER BY sp.priority_level DESC, r.created_at DESC",
+            nativeQuery = true)
+    Page<Room> findRoomsWithPriority(String keyword, Pageable pageable);
 }

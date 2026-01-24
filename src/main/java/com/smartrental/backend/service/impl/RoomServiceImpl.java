@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import com.smartrental.backend.repository.ServicePackageRepository;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -31,6 +32,7 @@ public class RoomServiceImpl implements RoomService {
     private final RoomRepository roomRepository;
     private final UserRepository userRepository;
     private final RoomMapper roomMapper;
+    private final ServicePackageRepository servicePackageRepository;
 
     // Cấu hình Geometry để lưu tọa độ
     private final GeometryFactory geometryFactory = new GeometryFactory(new PrecisionModel(), 4326);
@@ -49,6 +51,10 @@ public class RoomServiceImpl implements RoomService {
         if (landlord.getRole() != User.Role.LANDLORD) {
             throw new RuntimeException("Chỉ chủ trọ mới được đăng tin!");
         }
+
+        // 2. Lấy thông tin gói cước để biết số ngày được phép hiển thị
+        var servicePackage = servicePackageRepository.findById(dto.getServicePackageId())
+                .orElseThrow(() -> new RuntimeException("Gói dịch vụ không tồn tại"));
 
         Point point = geometryFactory.createPoint(new Coordinate(dto.getLongitude(), dto.getLatitude()));
 
@@ -71,12 +77,14 @@ public class RoomServiceImpl implements RoomService {
                 .genderConstraint(dto.getGenderConstraint())
                 .currentTenants(0)
                 .location(point)
-                .images(dto.getImages()) // Lưu danh sách ảnh
+                .images(dto.getImages())
                 .amenities(dto.getAmenities())
                 .videoUrl(dto.getVideoUrl())
+                .status(Room.Status.PENDING)
 
-                .status(Room.Status.PENDING) // Mặc định chờ duyệt
-                .expirationDate(LocalDateTime.now().plusDays(30)) // Ví dụ: tin hết hạn sau 30 ngày
+                // Cập nhật: Ngày hết hạn = Hôm nay + số ngày của gói cước
+                .expirationDate(LocalDateTime.now().plusDays(servicePackage.getDurationDays()))
+
                 .landlord(landlord)
                 .build();
 
@@ -204,5 +212,10 @@ public class RoomServiceImpl implements RoomService {
                     return "ACTIVE".equals(r1.getStatus()) ? -1 : 1;
                 })
                 .collect(Collectors.toList());
+    }
+    @Override // Bây giờ annotation này đã hợp lệ
+    public Page<RoomResponseDTO> getRoomsWithVideo(Pageable pageable) {
+
+        return roomRepository.findAllWithVideo(pageable).map(roomMapper::toResponse);
     }
 }
