@@ -66,6 +66,8 @@ public class RoomServiceImpl implements RoomService {
                 .area(dto.getArea())
                 .address(dto.getAddress())
                 .servicePackageId(dto.getServicePackageId())
+                .packageType(servicePackage.getName()) // Lưu: "Hội viên Vàng", "VIP",...
+                .priorityLevel(servicePackage.getPriorityLevel())
                 .rentalType(dto.getRentalType())
                 .capacity(dto.getCapacity())
                 .furnitureStatus(dto.getFurnitureStatus())

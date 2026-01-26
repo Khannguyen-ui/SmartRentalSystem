@@ -13,21 +13,20 @@ public class RoomMapper {
     @Autowired
     private ModelMapper modelMapper;
 
-    public Room toEntity(RoomCreateDTO dto) {
-        return modelMapper.map(dto, Room.class);
-    }
-
     public RoomResponseDTO toResponse(Room room) {
-        // 1. Tự động map các trường trùng tên (bao gồm cả furnitureStatus, numBedrooms... nếu Entity có)
         RoomResponseDTO dto = modelMapper.map(room, RoomResponseDTO.class);
 
-        // 2. Map tọa độ (Check null để an toàn)
+        // 🟢 THÊM: Đảm bảo dữ liệu VIP được truyền sang DTO
+        dto.setPackageType(room.getPackageType());
+        dto.setPriorityLevel(room.getPriorityLevel());
+
+        // Map tọa độ
         if (room.getLocation() != null) {
             dto.setLatitude(room.getLocation().getY());
             dto.setLongitude(room.getLocation().getX());
         }
 
-        // 3. Map thông tin chủ trọ (Check null để tránh lỗi 500/400)
+        // Map thông tin chủ trọ
         if (room.getLandlord() != null) {
             dto.setLandlordId(room.getLandlord().getId());
             dto.setLandlordName(room.getLandlord().getFullName());
@@ -35,14 +34,11 @@ public class RoomMapper {
             dto.setLandlordAvatar(room.getLandlord().getAvatarUrl());
             dto.setLandlordJoinDate(room.getLandlord().getCreatedAt());
         } else {
-            // Fallback nếu không có chủ trọ (tránh crash app)
             dto.setLandlordName("Hệ thống / Admin");
             dto.setLandlordId(0L);
         }
 
-        // 4. Map ngày tạo bài viết
         dto.setCreatedAt(room.getCreatedAt());
-
         return dto;
     }
 }

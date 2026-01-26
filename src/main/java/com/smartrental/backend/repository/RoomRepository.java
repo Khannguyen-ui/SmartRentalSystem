@@ -77,10 +77,9 @@ public interface RoomRepository extends JpaRepository<Room, Long> {
     Page<Room> findAllWithVideo(Pageable pageable);
 
     @Query(value = "SELECT r.* FROM rooms r " +
-            "LEFT JOIN service_package sp ON r.service_package_id = sp.id " +
             "WHERE r.status = 'ACTIVE' " +
-            "AND (:keyword IS NULL OR r.title ILIKE %:keyword%) " +
-            "ORDER BY sp.priority_level DESC, r.created_at DESC",
+            "AND (:keyword IS NULL OR :keyword = '' OR r.title ILIKE %:keyword%) " +
+            "ORDER BY COALESCE(r.priority_level, 0) DESC, r.created_at DESC",
             nativeQuery = true)
-    Page<Room> findRoomsWithPriority(String keyword, Pageable pageable);
+    Page<Room> findRoomsWithPriority(@Param("keyword") String keyword, Pageable pageable);
 }

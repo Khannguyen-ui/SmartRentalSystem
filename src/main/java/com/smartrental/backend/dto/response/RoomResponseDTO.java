@@ -28,7 +28,8 @@ public class RoomResponseDTO {
     private List<String> amenities;
     private String status;
     private String videoUrl; // Thêm video
-
+    private String packageType;
+    private Integer priorityLevel;
     // --- CÁC TRƯỜNG ĐẶC ĐIỂM CHI TIẾT (MỚI) ---
     private String furnitureStatus;
     private String legalStatus;

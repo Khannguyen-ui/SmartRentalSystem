@@ -8,5 +8,6 @@ public enum NotificationType {
     SYSTEM,             // Thông báo hệ thống
     APPOINTMENT_SUGGESTION ,// <--- [MỚI] Đề xuất giờ xem phòng
     REVIEW_NEW,  //Dánh giá
-    REVIEW_REPLY //Trả lời đánh giá
+    REVIEW_REPLY ,//Trả lời đánh giá
+    PURCHASE_PACKAGE,
 }

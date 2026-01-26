@@ -44,6 +44,9 @@ public class Room {
     @Column(name = "furniture_status")
     private String furnitureStatus; // VD: "Nội thất đầy đủ", "Cơ bản", "Nhà trống"
 
+    private String packageType;    // Lưu tên gói: "Hội viên Vàng", "VIP"...
+    private Integer priorityLevel;
+
     @Column(name = "legal_status")
     private String legalStatus; // VD: "Đã có sổ", "Đang chờ sổ"
 
@@ -99,7 +102,7 @@ public class Room {
     private Long servicePackageId;
 
 
-    private String packageType; // "NORMAL", "VIP1", "VIP2"
+    // "NORMAL", "VIP1", "VIP2"
     private LocalDateTime promotionExpiration;
 
     // --- QUAN HỆ ---
