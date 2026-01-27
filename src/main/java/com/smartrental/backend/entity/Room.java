@@ -36,6 +36,11 @@ public class Room {
     private Double area;      // Diện tích
     private String address;
 
+    @Column(name = "auto_renew")// Gia hạn tin
+    private Boolean autoRenew = false;
+
+    @Column(name = "last_pushed_at")
+    private LocalDateTime lastPushedAt; // Thời gian hết hạn
 
     @Column(name = "approved_at")
     private LocalDateTime approvedAt;
@@ -148,4 +153,7 @@ public class Room {
 
     // (ĐÃ SỬA) Thêm PENDING vào đây để hết lỗi
     public enum Status { PENDING, ACTIVE, FULL, HIDDEN, EXPIRED,APPROVED, REJECTED, }
+
+    public Boolean getAutoRenew() { return autoRenew; }
+    public void setAutoRenew(Boolean autoRenew) { this.autoRenew = autoRenew; }
 }

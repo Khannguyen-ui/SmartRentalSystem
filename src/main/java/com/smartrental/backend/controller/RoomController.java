@@ -1,24 +1,22 @@
 package com.smartrental.backend.controller;
 
 import com.smartrental.backend.dto.request.RoomCreateDTO;
-import com.smartrental.backend.dto.request.RoomUpdateDTO; // Cần tạo DTO này
-import com.smartrental.backend.dto.response.PriceHistoryDTO;
+import com.smartrental.backend.dto.request.RoomUpdateDTO;
 import com.smartrental.backend.dto.response.PriceTrendResponse;
 import com.smartrental.backend.dto.response.RoomResponseDTO;
-import com.smartrental.backend.service.SearchHistoryService;
+import com.smartrental.backend.service.PriceStatisticsService;
 import com.smartrental.backend.service.RoomService;
-import com.smartrental.backend.service.PriceStatisticsService; // Thêm dòng này
-
+import com.smartrental.backend.service.SearchHistoryService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-
-import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map; // Import thêm Map
 
 @RestController
 @RequestMapping("/api/rooms")
@@ -34,7 +32,7 @@ public class RoomController {
         return ResponseEntity.ok(roomService.createRoom(dto));
     }
 
-    // 2. Cập nhật phòng (MỚI)
+    // 2. Cập nhật phòng
     @PutMapping("/{id}")
     public ResponseEntity<RoomResponseDTO> updateRoom(
             @PathVariable Long id,
@@ -49,7 +47,7 @@ public class RoomController {
         return ResponseEntity.ok("Đã xóa phòng và toàn bộ ảnh liên quan");
     }
 
-    // 4. Lấy chi tiết phòng (Bao gồm danh sách ảnh)
+    // 4. Lấy chi tiết phòng
     @GetMapping("/{id}")
     public ResponseEntity<RoomResponseDTO> getRoomDetail(@PathVariable Long id) {
         return ResponseEntity.ok(roomService.getRoomDetail(id));
@@ -61,7 +59,7 @@ public class RoomController {
         return ResponseEntity.ok(roomService.getMyRooms());
     }
 
-    // 6. Tìm kiếm (Giữ nguyên)
+    // 6. Tìm kiếm
     @GetMapping("/search")
     public ResponseEntity<?> searchRooms(
             @RequestParam(name = "lat",required = false) Double lat,
@@ -69,24 +67,16 @@ public class RoomController {
             @RequestParam(name = "radius", defaultValue = "50000") Double radius,
             @RequestParam(name = "keyword", required = false) String keyword,
             @RequestParam(name = "address", required = false) String address,
-            // 👇 THÊM 2 THAM SỐ NÀY 👇
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "8") int size
     ) {
         try {
-            // 1. Lưu lịch sử (Giữ nguyên logic của bạn)
             if (keyword != null && !keyword.trim().isEmpty()) {
                 searchHistoryService.saveSearch(keyword, address, lat, lng, radius);
             }
-
-            // 2. Tạo đối tượng Pageable
             Pageable pageable = PageRequest.of(page, size);
-
-            // 3. Gọi Service và trả về Page thay vì List
             Page<RoomResponseDTO> result = roomService.searchNearby(lat, lng, radius, keyword, pageable);
-
             return ResponseEntity.ok(result);
-
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Lỗi: " + e.getMessage());
         }
@@ -95,14 +85,14 @@ public class RoomController {
     @GetMapping("/landlord/{landlordId}")
     public ResponseEntity<List<RoomResponseDTO>> getRoomsByLandlord(@PathVariable Long landlordId) {
         return ResponseEntity.ok(roomService.getRoomsByLandlord(landlordId));
-
     }
+
     @GetMapping("/{id}/price-history")
-// Thay đổi List<PriceHistoryDTO> thành PriceTrendResponse
     public ResponseEntity<PriceTrendResponse> getPriceHistory(@PathVariable Long id) {
         return ResponseEntity.ok(priceStatisticsService.getPriceHistoryForRoom(id));
     }
-    // 7. Lấy danh sách tin có Video (MỚI)
+
+    // 7. Lấy danh sách tin có Video
     @GetMapping("/videos")
     public ResponseEntity<Page<RoomResponseDTO>> getRoomsWithVideo(
             @RequestParam(name = "page", defaultValue = "0") int page,
@@ -112,5 +102,46 @@ public class RoomController {
         return ResponseEntity.ok(roomService.getRoomsWithVideo(pageable));
     }
 
+    // ==========================================
+    // (MỚI) CÁC API ĐẨY TIN & QUẢN LÝ TRẠNG THÁI
+    // ==========================================
 
+    // 8. Đẩy tin lên Top (Mua gói)
+    @PostMapping("/{id}/push")
+    public ResponseEntity<?> pushRoom(
+            @PathVariable Long id,
+            @RequestParam Long packageId) {
+        try {
+            roomService.pushRoomToTop(id, packageId);
+            return ResponseEntity.ok(Map.of("message", "Đẩy tin thành công! Tin của bạn đã lên Top."));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    // 9. Ẩn / Hiện tin (Hạ tin)
+    @PutMapping("/{id}/status")
+    public ResponseEntity<?> updateStatus(
+            @PathVariable Long id,
+            @RequestParam String status) { // status = "HIDDEN" hoặc "ACTIVE"
+        try {
+            roomService.updateRoomStatus(id, status);
+            return ResponseEntity.ok(Map.of("message", "Cập nhật trạng thái thành công: " + status));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    // 10. Bật / Tắt tự động gia hạn
+    @PutMapping("/{id}/auto-renew")
+    public ResponseEntity<?> toggleAutoRenew(
+            @PathVariable Long id,
+            @RequestParam boolean enable) {
+        try {
+            roomService.toggleAutoRenew(id, enable);
+            return ResponseEntity.ok(Map.of("message", enable ? "Đã BẬT tự động gia hạn" : "Đã TẮT tự động gia hạn"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
 }

@@ -42,5 +42,8 @@ public interface RoomService {
     RoomResponseDTO updateRoom(Long id, RoomUpdateDTO dto);
     List<RoomResponseDTO> getRoomsByLandlord(Long landlordId);
     Page<RoomResponseDTO> getRoomsWithVideo(Pageable pageable);
+    void pushRoomToTop(Long roomId, Long packageId);
+    void toggleAutoRenew(Long roomId, boolean enable);
+    void updateRoomStatus(Long roomId, String status);
 
 }

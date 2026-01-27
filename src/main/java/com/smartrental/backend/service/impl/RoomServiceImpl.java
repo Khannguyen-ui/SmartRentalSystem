@@ -4,9 +4,11 @@ import com.smartrental.backend.dto.request.RoomCreateDTO;
 import com.smartrental.backend.dto.request.RoomUpdateDTO;
 import com.smartrental.backend.dto.response.RoomResponseDTO;
 import com.smartrental.backend.entity.Room;
+import com.smartrental.backend.entity.ServicePackage;
 import com.smartrental.backend.entity.User;
 import com.smartrental.backend.mapper.RoomMapper;
 import com.smartrental.backend.repository.RoomRepository;
+import com.smartrental.backend.repository.ServicePackageRepository;
 import com.smartrental.backend.repository.UserRepository;
 import com.smartrental.backend.service.RoomService;
 import lombok.RequiredArgsConstructor;
@@ -14,13 +16,13 @@ import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.PrecisionModel;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import com.smartrental.backend.repository.ServicePackageRepository;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -215,9 +217,92 @@ public class RoomServiceImpl implements RoomService {
                 })
                 .collect(Collectors.toList());
     }
-    @Override // Bây giờ annotation này đã hợp lệ
+    @Override
     public Page<RoomResponseDTO> getRoomsWithVideo(Pageable pageable) {
-
         return roomRepository.findAllWithVideo(pageable).map(roomMapper::toResponse);
+    }
+
+    // =====================================================================
+    //          CÁC HÀM MỚI (ĐÃ SỬA LẠI GET/SET WALLET BALANCE)
+    // =====================================================================
+
+    @Override
+    @Transactional
+    public void pushRoomToTop(Long roomId, Long packageId) {
+        // 1. Tìm Phòng & Gói cước
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new RuntimeException("Phòng không tồn tại"));
+
+        ServicePackage pkg = servicePackageRepository.findById(packageId)
+                .orElseThrow(() -> new RuntimeException("Gói cước không tồn tại"));
+
+        User landlord = room.getLandlord();
+
+        // 2. Kiểm tra số dư ví (Sửa getAccountBalance -> getWalletBalance)
+        if (landlord.getWalletBalance() == null || landlord.getWalletBalance().compareTo(pkg.getPrice()) < 0) {
+            throw new RuntimeException("Số dư tài khoản không đủ (" + pkg.getPrice() + " đ). Vui lòng nạp thêm!");
+        }
+
+        // 3. Trừ tiền (Sửa setAccountBalance -> setWalletBalance)
+        landlord.setWalletBalance(landlord.getWalletBalance().subtract(pkg.getPrice()));
+        userRepository.save(landlord);
+
+        // 4. Cập nhật thông tin Phòng
+        room.setServicePackageId(pkg.getId()); // Cập nhật ID gói
+        room.setPriorityLevel(pkg.getPriorityLevel()); // Cập nhật độ ưu tiên hiển thị
+        room.setPackageType(pkg.getName()); // Lưu tên gói
+
+        // Reset thời hạn tin = Thời điểm hiện tại + Số ngày của gói
+        room.setExpirationDate(LocalDateTime.now().plusDays(pkg.getDurationDays()));
+        room.setLastPushedAt(LocalDateTime.now());
+
+        // Nếu tin đang bị Ẩn hoặc Hết hạn -> Chuyển sang ACTIVE ngay
+        if (room.getStatus() == Room.Status.HIDDEN || room.getStatus() == Room.Status.EXPIRED) {
+            room.setStatus(Room.Status.ACTIVE);
+        }
+
+        roomRepository.save(room);
+    }
+
+    @Override
+    @Transactional
+    public void toggleAutoRenew(Long roomId, boolean enable) {
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new RuntimeException("Phòng không tồn tại"));
+
+        User currentUser = getCurrentUser();
+        if (!room.getLandlord().getId().equals(currentUser.getId())) {
+            throw new RuntimeException("Bạn không có quyền cài đặt phòng này");
+        }
+
+        room.setAutoRenew(enable);
+        roomRepository.save(room);
+    }
+
+    @Override
+    @Transactional
+    public void updateRoomStatus(Long roomId, String statusStr) {
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new RuntimeException("Phòng không tồn tại"));
+
+        User currentUser = getCurrentUser();
+        if (!room.getLandlord().getId().equals(currentUser.getId()) && currentUser.getRole() != User.Role.ADMIN) {
+            throw new RuntimeException("Không có quyền");
+        }
+
+        try {
+            Room.Status newStatus = Room.Status.valueOf(statusStr.toUpperCase());
+
+            // Logic chặn: Không cho chuyển sang ACTIVE nếu đã hết hạn
+            if (newStatus == Room.Status.ACTIVE &&
+                    (room.getExpirationDate() == null || room.getExpirationDate().isBefore(LocalDateTime.now()))) {
+                throw new RuntimeException("Tin đã hết hạn, vui lòng Đẩy tin (Gia hạn) trước khi kích hoạt lại.");
+            }
+
+            room.setStatus(newStatus);
+            roomRepository.save(room);
+        } catch (IllegalArgumentException e) {
+            throw new RuntimeException("Trạng thái không hợp lệ: " + statusStr);
+        }
     }
 }
