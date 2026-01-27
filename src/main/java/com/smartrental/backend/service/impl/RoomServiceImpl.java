@@ -253,7 +253,16 @@ public class RoomServiceImpl implements RoomService {
         room.setPackageType(pkg.getName()); // Lưu tên gói
 
         // Reset thời hạn tin = Thời điểm hiện tại + Số ngày của gói
-        room.setExpirationDate(LocalDateTime.now().plusDays(pkg.getDurationDays()));
+        // Logic cộng dồn (Khuyên dùng)
+        if (room.getStatus() == Room.Status.ACTIVE &&
+                room.getExpirationDate() != null &&
+                room.getExpirationDate().isAfter(LocalDateTime.now())) {
+            // Nếu còn hạn thì cộng tiếp vào đuôi
+            room.setExpirationDate(room.getExpirationDate().plusDays(pkg.getDurationDays()));
+        } else {
+            // Nếu hết hạn thì tính từ bây giờ
+            room.setExpirationDate(LocalDateTime.now().plusDays(pkg.getDurationDays()));
+        }
         room.setLastPushedAt(LocalDateTime.now());
 
         // Nếu tin đang bị Ẩn hoặc Hết hạn -> Chuyển sang ACTIVE ngay
