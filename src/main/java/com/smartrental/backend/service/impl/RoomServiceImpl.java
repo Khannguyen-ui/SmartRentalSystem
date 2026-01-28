@@ -3,6 +3,7 @@ package com.smartrental.backend.service.impl;
 import com.smartrental.backend.dto.request.RoomCreateDTO;
 import com.smartrental.backend.dto.request.RoomUpdateDTO;
 import com.smartrental.backend.dto.response.RoomResponseDTO;
+import com.smartrental.backend.entity.NotificationType;
 import com.smartrental.backend.entity.Room;
 import com.smartrental.backend.entity.ServicePackage;
 import com.smartrental.backend.entity.User;
@@ -11,6 +12,7 @@ import com.smartrental.backend.repository.RoomRepository;
 import com.smartrental.backend.repository.ServicePackageRepository;
 import com.smartrental.backend.repository.UserRepository;
 import com.smartrental.backend.service.RoomService;
+import com.smartrental.backend.service.NotificationService;
 import jakarta.persistence.EntityManager;      // <--- MỚI
 import jakarta.persistence.PersistenceContext; // <--- MỚI
 import jakarta.persistence.Query;              // <--- MỚI
@@ -38,6 +40,7 @@ public class RoomServiceImpl implements RoomService {
     private final RoomRepository roomRepository;
     private final UserRepository userRepository;
     private final RoomMapper roomMapper;
+    private final NotificationService notificationService;
     private final ServicePackageRepository servicePackageRepository;
 
     // 🟢 1. Inject EntityManager để chạy query động
@@ -240,6 +243,12 @@ public class RoomServiceImpl implements RoomService {
             room.setStatus(Room.Status.ACTIVE);
         }
         roomRepository.save(room);
+        notificationService.sendNotification(
+                landlord, "Đẩy tin thành công",
+                String.format("Tin đăng '%s' của bạn đã được đẩy lên đầu trang và gia hạn thêm %d ngày.",
+                        room.getTitle(), pkg.getDurationDays()),
+                NotificationType.ROOM_PUSH_SUCCESS, room.getId()
+        );
     }
 
     @Override

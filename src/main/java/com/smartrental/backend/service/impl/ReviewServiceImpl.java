@@ -1,6 +1,7 @@
 package com.smartrental.backend.service.impl;
 
 import com.smartrental.backend.dto.request.ReviewCreateDTO;
+import com.smartrental.backend.dto.response.ReviewResponseDTO;
 import com.smartrental.backend.entity.*;
 import com.smartrental.backend.repository.*;
 import com.smartrental.backend.service.ReviewService;
@@ -21,16 +22,15 @@ public class ReviewServiceImpl implements ReviewService {
     private final RoomRepository roomRepository;
     private final UserRepository userRepository;
     private final ContractRepository contractRepository;
-    private final NotificationService notificationService; // [cite: 1117]
+    private final NotificationService notificationService;
 
     @Override
     @Transactional
-    public Review createReview(ReviewCreateDTO dto) {
+    public ReviewResponseDTO createReview(ReviewCreateDTO dto) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User tenant = userRepository.findByEmail(email).orElseThrow();
         Room room = roomRepository.findById(dto.getRoomId()).orElseThrow();
 
-        // 1. Kiểm tra điều kiện (đã thuê và chưa đánh giá)
         if (!contractRepository.existsByTenantIdAndRoomId(tenant.getId(), room.getId())) {
             throw new RuntimeException("Bạn chỉ có thể đánh giá phòng sau khi đã thuê.");
         }
@@ -38,7 +38,6 @@ public class ReviewServiceImpl implements ReviewService {
             throw new RuntimeException("Mỗi phòng chỉ được đánh giá một lần.");
         }
 
-        // 2. Lưu Review
         Review review = Review.builder()
                 .room(room)
                 .tenant(tenant)
@@ -48,10 +47,8 @@ public class ReviewServiceImpl implements ReviewService {
                 .build();
         Review saved = reviewRepository.save(review);
 
-        // 3. Cập nhật số liệu trung bình cho phòng
         updateRoomRatingAggregation(room.getId());
 
-        // 4. Gửi thông báo cho Chủ trọ [cite: 1118-1122]
         notificationService.sendNotification(
                 room.getLandlord(),
                 "⭐ Đánh giá mới",
@@ -60,28 +57,27 @@ public class ReviewServiceImpl implements ReviewService {
                 saved.getId()
         );
 
-        return saved;
+        // Trả về DTO thay vì Entity
+        return mapToResponseDTO(saved);
     }
 
+    @Override
     @Transactional
-    public Review replyToReview(Long reviewId, String replyContent) {
+    public ReviewResponseDTO replyToReview(Long reviewId, String replyContent) {
         Review review = reviewRepository.findById(reviewId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy đánh giá"));
 
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User currentUser = userRepository.findByEmail(email).orElseThrow();
 
-        // Kiểm tra xem người đang phản hồi có phải là chủ trọ của phòng này không [cite: 615]
         if (!review.getRoom().getLandlord().getId().equals(currentUser.getId())) {
             throw new RuntimeException("Bạn không có quyền phản hồi đánh giá này.");
         }
 
-        // Cập nhật phản hồi
         review.setLandlordReply(replyContent);
         review.setRepliedAt(LocalDateTime.now());
         Review updated = reviewRepository.save(review);
 
-        // Gửi thông báo cho Khách thuê (Người đã viết review) [cite: 1118-1122]
         notificationService.sendNotification(
                 review.getTenant(),
                 "💬 Phản hồi đánh giá",
@@ -90,20 +86,38 @@ public class ReviewServiceImpl implements ReviewService {
                 review.getId()
         );
 
-        return updated;
+        // Trả về DTO thay vì Entity
+        return mapToResponseDTO(updated);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ReviewResponseDTO> getRoomReviews(Long roomId) {
+        List<Review> reviews = reviewRepository.findByRoomIdOrderByCreatedAtDesc(roomId);
+        return reviews.stream().map(this::mapToResponseDTO).toList();
+    }
+
+    // --- HÀM PHỤ ĐỂ MAP DỮ LIỆU TẬP TRUNG ---
+    private ReviewResponseDTO mapToResponseDTO(Review rev) {
+        return ReviewResponseDTO.builder()
+                .id(rev.getId())
+                .tenantName(rev.getTenant().getFullName()) // Lấy từ User entity
+                .tenantAvatar(rev.getTenant().getAvatarUrl()) // Lấy đúng getAvatarUrl() từ User
+                .rating(rev.getRating())
+                .comment(rev.getComment())
+                .reviewImages(rev.getReviewImages())
+                .createdAt(rev.getCreatedAt())
+                .landlordReply(rev.getLandlordReply())
+                .repliedAt(rev.getRepliedAt())
+                .build();
     }
 
     private void updateRoomRatingAggregation(Long roomId) {
         int total = reviewRepository.countByRoomId(roomId);
         Double avg = reviewRepository.getAverageRatingByRoomId(roomId);
         Room room = roomRepository.findById(roomId).orElseThrow();
-        room.setAverageRating(Math.round(avg * 10.0) / 10.0);
+        room.setAverageRating(Math.round((avg != null ? avg : 0.0) * 10.0) / 10.0);
         room.setTotalReviews(total);
         roomRepository.save(room);
-    }
-
-    @Override
-    public List<Review> getRoomReviews(Long roomId) {
-        return reviewRepository.findByRoomIdOrderByCreatedAtDesc(roomId);
     }
 }

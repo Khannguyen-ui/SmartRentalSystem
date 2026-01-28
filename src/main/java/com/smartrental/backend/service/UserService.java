@@ -17,5 +17,6 @@ public interface UserService {
     void upgradeToLandlord();
     void submitKyc(KycRequestDTO dto);
     LandlordPublicProfileDTO getLandlordPublicProfile(Long landlordId);
-
+    void sendForgotPasswordEmail(String email);
+    void resetPassword(String token, String newPassword);
 }

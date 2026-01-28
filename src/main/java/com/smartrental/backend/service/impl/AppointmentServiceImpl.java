@@ -40,13 +40,30 @@ public class AppointmentServiceImpl implements AppointmentService {
     @Override
     @Transactional
     public AppointmentResponseDTO createAppointment(AppointmentCreateDTO dto) {
-        User tenant = getCurrentUser();
+        User currentUser = getCurrentUser(); // Người đang thực hiện thao tác
         Room room = roomRepository.findById(dto.getRoomId())
                 .orElseThrow(() -> new RuntimeException("Phòng không tồn tại"));
 
+        User tenant;
+
+        // 🟢 LOGIC MỚI: Kiểm tra ai đang tạo lịch
+        // Nếu người đăng nhập là chủ trọ của phòng này -> Họ đang tạo lịch hộ khách hàng
+        if (room.getLandlord().getId().equals(currentUser.getId())) {
+            if (dto.getTenantId() == null) {
+                throw new RuntimeException("Chủ trọ tạo lịch cần cung cấp ID khách hàng (tenantId)!");
+            }
+            tenant = userRepository.findById(dto.getTenantId())
+                    .orElseThrow(() -> new RuntimeException("Khách hàng không tồn tại"));
+        } else {
+            // Nếu người đăng nhập không phải chủ trọ -> Họ chính là khách hàng đi thuê
+            tenant = currentUser;
+        }
+
+        // Kiểm tra: Không cho phép chủ trọ tự đặt lịch cho chính mình (dù là tự đặt hay nhập ID của mình)
         if (room.getLandlord().getId().equals(tenant.getId())) {
             throw new RuntimeException("Bạn không thể đặt lịch xem phòng của chính mình!");
         }
+
         if (room.getStatus() != Room.Status.ACTIVE) {
             throw new RuntimeException("Phòng này không khả dụng để đặt lịch!");
         }
@@ -61,15 +78,19 @@ public class AppointmentServiceImpl implements AppointmentService {
 
         Appointment saved = appointmentRepository.save(appointment);
 
+        // 🟢 CẬP NHẬT THÔNG BÁO: Gửi cho người "đối diện"
+        User receiver = room.getLandlord().getId().equals(currentUser.getId()) ? tenant : room.getLandlord();
+        String notifyTitle = room.getLandlord().getId().equals(currentUser.getId()) ? "📅 Lịch hẹn mới từ chủ trọ" : "📅 Yêu cầu xem phòng mới";
+
         notificationService.sendNotification(
-                room.getLandlord(),
-                "📅 Yêu cầu xem phòng mới",
-                String.format("Khách hàng %s muốn xem phòng '%s'. Lời nhắn: %s", tenant.getFullName(), room.getTitle(), dto.getMessage()),
+                receiver,
+                notifyTitle,
+                String.format("Lịch xem phòng '%s'. Lời nhắn: %s", room.getTitle(), dto.getMessage()),
                 NotificationType.SYSTEM,
                 saved.getId()
         );
 
-        return appointmentMapper.toResponse(saved, tenant.getId());
+        return appointmentMapper.toResponse(saved, currentUser.getId());
     }
 
     @Override

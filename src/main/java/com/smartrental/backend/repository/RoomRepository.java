@@ -9,6 +9,7 @@ import org.locationtech.jts.geom.Point;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -83,4 +84,12 @@ public interface RoomRepository extends JpaRepository<Room, Long>  {
             "ORDER BY COALESCE(r.priority_level, 0) DESC, r.created_at DESC",
             nativeQuery = true)
     Page<Room> findRoomsWithPriority(@Param("keyword") String keyword, Pageable pageable);
+    // Cảnh báo tin hết hạn
+    // Lấy tin sắp hết hạn trong 24h tới để báo trước
+    @Query("SELECT r FROM Room r WHERE r.status = 'ACTIVE' AND r.expirationDate <= :targetDate AND r.expirationDate > CURRENT_TIMESTAMP")
+    List<Room> findExpiringSoon(@Param("targetDate") LocalDateTime targetDate);
+
+    // Lấy tin thực tế đã quá hạn nhưng status vẫn là ACTIVE để hệ thống tự đóng
+    @Query("SELECT r FROM Room r WHERE r.status = 'ACTIVE' AND r.expirationDate <= :now")
+    List<Room> findAllExpiredActiveRooms(@Param("now") LocalDateTime now);
 }

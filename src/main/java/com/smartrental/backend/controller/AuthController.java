@@ -1,6 +1,8 @@
 package com.smartrental.backend.controller;
 
+import com.smartrental.backend.dto.request.ForgotPasswordRequest;
 import com.smartrental.backend.dto.request.LoginDTO;
+import com.smartrental.backend.dto.request.ResetPasswordRequest;
 import com.smartrental.backend.dto.request.UserRegisterDTO;
 import com.smartrental.backend.dto.response.AuthResponse;
 import com.smartrental.backend.dto.response.UserResponseDTO;
@@ -31,5 +33,16 @@ public class AuthController {
     public ResponseEntity<AuthResponse> login(@RequestBody @Valid LoginDTO loginDTO) {
         AuthResponse response = userService.login(loginDTO);
         return ResponseEntity.ok(response);
+    }
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@RequestBody ForgotPasswordRequest request) {
+        userService.sendForgotPasswordEmail(request.getEmail());
+        return ResponseEntity.ok(java.util.Map.of("message", "Link đã được gửi tới email của bạn"));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@RequestBody ResetPasswordRequest request) {
+        userService.resetPassword(request.getToken(), request.getNewPassword());
+        return ResponseEntity.ok(java.util.Map.of("message", "Mật khẩu đã được cập nhật"));
     }
 }

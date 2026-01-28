@@ -22,13 +22,14 @@ public class Contract {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "room_id")
+    @JoinColumn(name = "room_id",nullable = false)
     private Room room;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "tenant_id")
-    private User tenant; // Người đứng tên hợp đồng
+    @JoinColumn(name = "tenant_id",nullable = false)
+    private User tenant;
 
+    @Column(nullable = false)
     private LocalDate startDate;
     private LocalDate endDate;
 

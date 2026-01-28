@@ -1,38 +1,40 @@
 package com.smartrental.backend.controller;
 
 import com.smartrental.backend.dto.request.ReviewCreateDTO;
-import com.smartrental.backend.entity.Review;
-import com.smartrental.backend.service.ReviewService; // Import Interface
-import com.smartrental.backend.service.impl.ReviewServiceImpl;
+import com.smartrental.backend.dto.response.ReviewResponseDTO; // Import DTO mới
+import com.smartrental.backend.service.ReviewService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/reviews")
 @RequiredArgsConstructor
 public class ReviewController {
 
-    private final ReviewService reviewService; // Chỉ gọi Service
+    private final ReviewService reviewService;
 
+    // 1. Cập nhật kiểu trả về thành ReviewResponseDTO
     @PostMapping
-    public ResponseEntity<Review> createReview(@RequestBody @Valid ReviewCreateDTO dto) {
+    public ResponseEntity<ReviewResponseDTO> createReview(@RequestBody @Valid ReviewCreateDTO dto) {
         return ResponseEntity.ok(reviewService.createReview(dto));
     }
 
+    // 2. Cập nhật kiểu trả về thành List<ReviewResponseDTO> -> HẾT LỖI TẠI ĐÂY
     @GetMapping("/room/{roomId}")
-    public ResponseEntity<List<Review>> getRoomReviews(@PathVariable Long roomId) {
+    public ResponseEntity<List<ReviewResponseDTO>> getRoomReviews(@PathVariable Long roomId) {
         return ResponseEntity.ok(reviewService.getRoomReviews(roomId));
     }
-    // Trong ReviewController.java [cite: 331-338]
 
+    // 3. Cập nhật kiểu trả về cho phần phản hồi
     @PutMapping("/{id}/reply")
-    public ResponseEntity<Review> replyToReview(
+    public ResponseEntity<ReviewResponseDTO> replyToReview(
             @PathVariable Long id,
-            @RequestBody java.util.Map<String, String> payload) {
+            @RequestBody Map<String, String> payload) {
         return ResponseEntity.ok(reviewService.replyToReview(id, payload.get("reply")));
     }
 }

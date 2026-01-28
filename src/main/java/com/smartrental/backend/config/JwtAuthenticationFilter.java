@@ -54,21 +54,27 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
+            // 🟢 CẬP NHẬT: Thêm try-catch để bắt lỗi không tìm thấy người dùng
+            try {
+                UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
 
-            if (jwtUtils.isTokenValid(jwt, userDetails)) {
-                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                        userDetails,
-                        null,
-                        userDetails.getAuthorities()
-                );
-                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authToken);
+                if (jwtUtils.isTokenValid(jwt, userDetails)) {
+                    UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                            userDetails,
+                            null,
+                            userDetails.getAuthorities()
+                    );
+                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(authToken);
 
-                // TỐI ƯU: Ép kiểu và cập nhật trực tiếp, tránh query lại database
-                if (userDetails instanceof User user) {
-                    updateLastActiveTimeOptimized(user);
+                    if (userDetails instanceof User user) {
+                        updateLastActiveTimeOptimized(user);
+                    }
                 }
+            } catch (org.springframework.security.core.userdetails.UsernameNotFoundException e) {
+                // Nếu không thấy user, chỉ đơn giản là đi tiếp, không làm sập request
+                filterChain.doFilter(request, response);
+                return;
             }
         }
         filterChain.doFilter(request, response);

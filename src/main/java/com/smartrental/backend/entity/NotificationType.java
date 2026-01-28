@@ -10,4 +10,7 @@ public enum NotificationType {
     REVIEW_NEW,  //Dánh giá
     REVIEW_REPLY ,//Trả lời đánh giá
     PURCHASE_PACKAGE,
+    KYC_STATUS,
+    ROOM_PUSH_SUCCESS,
+    ROOM_EXPIRING
 }

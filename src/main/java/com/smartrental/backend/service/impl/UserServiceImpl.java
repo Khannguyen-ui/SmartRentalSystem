@@ -7,14 +7,12 @@ import com.smartrental.backend.dto.response.AuthResponse;
 import com.smartrental.backend.dto.response.LandlordPublicProfileDTO;
 import com.smartrental.backend.dto.response.LandlordStatsDTO;
 import com.smartrental.backend.dto.response.UserResponseDTO;
+import com.smartrental.backend.entity.PasswordResetToken;
 import com.smartrental.backend.entity.User;
 import com.smartrental.backend.mapper.UserMapper;
 
 // --- 1. IMPORT CÁC REPOSITORY MỚI ---
-import com.smartrental.backend.repository.ContractRepository;
-import com.smartrental.backend.repository.ReviewRepository;
-import com.smartrental.backend.repository.RoomRepository;
-import com.smartrental.backend.repository.UserRepository;
+import com.smartrental.backend.repository.*;
 
 import com.smartrental.backend.service.UserService;
 import com.smartrental.backend.util.JwtUtils;
@@ -28,6 +26,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -44,6 +43,8 @@ public class UserServiceImpl implements UserService {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtUtils jwtUtils;
+    private final PasswordResetTokenRepository tokenRepository;
+    private final org.springframework.mail.javamail.JavaMailSender mailSender;
 
     // --- 2. KHAI BÁO (INJECT) CÁC REPOSITORY CÒN THIẾU ---
     // (Bắt buộc phải có các dòng này thì mới dùng được ở dưới)
@@ -207,5 +208,62 @@ public class UserServiceImpl implements UserService {
             }
         }
         return districtSet.stream().limit(3).toList();
+    }
+    @Override
+    @Transactional
+    public void sendForgotPasswordEmail(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Email không tồn tại!"));
+
+        // Dọn dẹp các yêu cầu cũ trước đó
+        tokenRepository.deleteByUser(user);
+
+        String token = java.util.UUID.randomUUID().toString();
+        PasswordResetToken resetToken = PasswordResetToken.builder()
+                .token(token)
+                .user(user)
+                .expiryDate(LocalDateTime.now().plusHours(1)) // Tăng lên 1 giờ để trừ hao lệch múi giờ
+                .build();
+
+        tokenRepository.save(resetToken);
+
+        String resetLink = "http://localhost:5173/reset-password?token=" + token;
+        sendEmail(user.getEmail(), "Đặt lại mật khẩu - Smart Rental",
+                "Vui lòng nhấn vào link sau để thay đổi mật khẩu (có hiệu lực trong 60 phút): " + resetLink);
+    }
+
+    @Override
+    @Transactional
+    public void resetPassword(String token, String newPassword) {
+        // Thêm log để kiểm tra chuỗi token gửi từ React lên có đúng không
+        System.out.println("Kiểm tra Token: " + token);
+
+        PasswordResetToken resetToken = tokenRepository.findByToken(token)
+                .orElseThrow(() -> new RuntimeException("Mã xác thực không hợp lệ hoặc đã được sử dụng!"));
+
+        // Log kiểm tra múi giờ
+        System.out.println("Giờ hiện tại hệ thống: " + LocalDateTime.now());
+        System.out.println("Giờ hết hạn của Token: " + resetToken.getExpiryDate());
+
+        if (resetToken.isExpired()) {
+            // Không gọi delete ở đây vì throw sẽ rollback.
+            // Hãy để hàm deleteByUser ở trên dọn dẹp khi người dùng yêu cầu lại mail mới.
+            throw new RuntimeException("Mã xác thực đã hết hạn. Vui lòng yêu cầu lại mã mới!");
+        }
+
+        User user = resetToken.getUser();
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+
+        // Thành công thì xóa token ngay để link không dùng lại được lần 2 (Bảo mật)
+        tokenRepository.delete(resetToken);
+    }
+    // Thêm vào cuối file UserServiceImpl.java
+    private void sendEmail(String to, String subject, String body) {
+        org.springframework.mail.SimpleMailMessage message = new org.springframework.mail.SimpleMailMessage();
+        message.setTo(to);
+        message.setSubject(subject);
+        message.setText(body);
+        mailSender.send(message);
     }
 }

@@ -11,12 +11,10 @@ public class AppointmentCreateDTO {
     private Long roomId;
 
     @NotNull(message = "Phải chọn giờ hẹn")
-    // --- XÓA hoặc COMMENT DÒNG NÀY ---
-    // @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    // ---------------------------------
-
-    // Mặc định Jackson sẽ hiểu chuỗi "2025-01-18T14:30:00" là LocalDateTime chuẩn
     private LocalDateTime meetTime;
+
+    private Long tenantId;
+
 
     private String message;
 }

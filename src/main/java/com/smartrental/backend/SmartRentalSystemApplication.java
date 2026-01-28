@@ -1,11 +1,14 @@
 package com.smartrental.backend;
 
+import jakarta.annotation.PostConstruct;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.EnableScheduling;
+
+import java.util.TimeZone;
 
 @EnableScheduling
 @SpringBootApplication
@@ -31,4 +34,10 @@ public class SmartRentalSystemApplication {
 
         };
     }
+    @PostConstruct
+    public void init() {
+        // Đặt múi giờ mặc định cho cả ứng dụng Java
+        TimeZone.setDefault(TimeZone.getTimeZone("Asia/Ho_Chi_Minh"));
+    }
+
 }

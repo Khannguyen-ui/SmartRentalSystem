@@ -122,10 +122,23 @@ public class AdminServiceImpl implements AdminService {
     public void approveKYC(Long userId, ApproveRequestDTO dto) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User không tồn tại"));
+
         if (dto.isApproved()) {
             user.setKycStatus("VERIFIED");
+            // Bổ sung thông báo thành công
+            notificationService.sendNotification(
+                    user, "Xác minh danh tính thành công",
+                    "Hồ sơ định danh của bạn đã được phê duyệt. Tài khoản đã có dấu tích xanh uy tín!",
+                    NotificationType.KYC_STATUS, user.getId()
+            );
         } else {
             user.setKycStatus("REJECTED");
+            // Bổ sung thông báo từ chối kèm lý do
+            notificationService.sendNotification(
+                    user, "Xác minh danh tính thất bại",
+                    "Rất tiếc, hồ sơ của bạn không được phê duyệt. Lý do: " + dto.getReason(),
+                    NotificationType.KYC_STATUS, user.getId()
+            );
         }
         userRepository.save(user);
     }

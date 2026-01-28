@@ -5,11 +5,13 @@ import com.smartrental.backend.dto.response.ChatMessageResponse;
 import com.smartrental.backend.dto.response.ConversationResponse; // <--- Import DTO mới
 import com.smartrental.backend.entity.Conversation;
 import com.smartrental.backend.entity.Message;
+import com.smartrental.backend.entity.NotificationType;
 import com.smartrental.backend.entity.User;
 import com.smartrental.backend.mapper.ChatMapper;
 import com.smartrental.backend.repository.ConversationRepository;
 import com.smartrental.backend.repository.MessageRepository;
 import com.smartrental.backend.repository.UserRepository;
+import com.smartrental.backend.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -28,8 +30,9 @@ public class ChatServiceImpl {
     private final MessageRepository messageRepository;
     private final UserRepository userRepository;
     private final ChatMapper chatMapper;
+    private final NotificationService notificationService;
 
-    // --- Helper lấy User hiện tại từ Token ---
+
     private User getCurrentUser() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         return userRepository.findByEmail(email)
@@ -61,7 +64,7 @@ public class ChatServiceImpl {
         Conversation savedConv = conversationRepository.save(conversation);
 
         User sender = userRepository.findById(dto.getSenderId()).orElseThrow();
-
+        User receiver = userRepository.findById(dto.getReceiverId()).orElseThrow();
         // Lưu tin nhắn chi tiết
         Message message = Message.builder()
                 .conversation(savedConv)
@@ -72,7 +75,21 @@ public class ChatServiceImpl {
                 .createdAt(LocalDateTime.now())
                 .build();
 
-        return messageRepository.save(message);
+        Message savedMessage = messageRepository.save(message);
+        // gửi ảnh
+        String notificationContent = "IMAGE".equals(dto.getType())
+                ? "[Hình ảnh]"
+                : dto.getContent();
+
+        // 🟢 2. Gửi thông báo WebSocket "Tin nhắn mới" cho người nhận
+        notificationService.sendNotification(
+                receiver,
+                "Tin nhắn mới từ " + sender.getFullName(),
+                dto.getContent().length() > 50 ? dto.getContent().substring(0, 47) + "..." : dto.getContent(),
+                NotificationType.CHAT_NEW,
+                sender.getId() // referenceId là ID người gửi để FE biết bấm vào thì mở chat với ai
+        );
+        return savedMessage;
     }
 
     public List<ChatMessageResponse> getChatHistory(Long partnerId) {
@@ -92,10 +109,7 @@ public class ChatServiceImpl {
     // 2. CÁC HÀM MỚI CẬP NHẬT (CHO SIDEBAR & START CHAT)
     // ========================================================================
 
-    /**
-     * Lấy danh sách các cuộc hội thoại để hiển thị lên Sidebar bên trái
-     * Sử dụng repository method: findMyConversations
-     */
+
     public List<ConversationResponse> getUserConversations() {
         User currentUser = getCurrentUser();
 
@@ -108,6 +122,7 @@ public class ChatServiceImpl {
             User partner = (c.getUser1().getId().equals(currentUser.getId()))
                     ? c.getUser2()
                     : c.getUser1();
+            long unreadCount = messageRepository.countUnreadMessages(c.getId(), currentUser.getId());
 
             // Map sang DTO Response
             return ConversationResponse.builder()
@@ -116,15 +131,13 @@ public class ChatServiceImpl {
                     .avatar(partner.getAvatarUrl()) // Avatar đối phương (lưu ý tên getter trong Entity User của bạn)
                     .lastMessage(c.getLastMessage()) // Tin nhắn cuối
                     .lastTime(c.getUpdatedAt())      // Thời gian cập nhật
-                    .isOnline(false)                 // TODO: Tích hợp Redis/Socket để check online thật
-                    .unreadCount(0)                  // TODO: Tích hợp logic đếm tin chưa đọc
+                    .isOnline(false)
+                    .unreadCount((int) unreadCount)
                     .build();
         }).collect(Collectors.toList());
     }
 
-    /**
-     * Tạo hội thoại mới nếu chưa tồn tại (Dùng cho nút "Chat với chủ nhà")
-     */
+    @Transactional
     public void createConversationIfNotExists(Long partnerId) {
         User currentUser = getCurrentUser();
 
@@ -142,6 +155,24 @@ public class ChatServiceImpl {
                             .build();
 
                     return conversationRepository.save(newConv);
+                });
+    }
+    @Transactional
+    public void markAsRead(Long partnerId) {
+        User currentUser = getCurrentUser();
+
+        conversationRepository.findExistingConversation(currentUser.getId(), partnerId)
+                .ifPresent(conversation -> {
+
+                    List<Message> unreadMessages = messageRepository
+                            .findByConversationIdAndSenderIdNotAndIsReadFalse(conversation.getId(), currentUser.getId());
+
+                    if (!unreadMessages.isEmpty()) {
+
+                        unreadMessages.forEach(m -> m.setRead(true));
+
+                        messageRepository.saveAll(unreadMessages);
+                    }
                 });
     }
 }

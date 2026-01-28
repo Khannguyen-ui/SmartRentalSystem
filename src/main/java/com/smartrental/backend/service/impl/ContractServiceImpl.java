@@ -31,6 +31,7 @@ public class ContractServiceImpl implements ContractService {
     private final RoomRepository roomRepository;
     private final UserRepository userRepository;
     private final ContractMapper contractMapper;
+    private final com.smartrental.backend.repository.BillRepository billRepository;
 
     // Inject thêm Repo và Notification Service để xử lý Trigger
     private final AppointmentRepository appointmentRepository;
@@ -134,29 +135,58 @@ public class ContractServiceImpl implements ContractService {
     // ===> ĐÂY LÀ HÀM DUY NHẤT (Đã gộp Active + Potential) <===
     @Override
     public List<LandlordCustomerDTO> getCustomersByLandlord() {
-        // 1. Lấy ID chủ trọ hiện tại
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User landlord = userRepository.findByEmail(email).orElseThrow();
 
         List<LandlordCustomerDTO> result = new ArrayList<>();
 
         // =========================================================
-        // PHẦN 1: KHÁCH ĐANG THUÊ (ACTIVE) - Giữ nguyên
+        // PHẦN 1: KHÁCH ĐANG THUÊ (ACTIVE)
         // =========================================================
         List<Contract> contracts = contractRepository.findByLandlordId(landlord.getId());
 
-        List<LandlordCustomerDTO> contractCustomers = contracts.stream().map(c -> LandlordCustomerDTO.builder()
-                .contractId(c.getId())
-                .tenantId(c.getTenant().getId())
-                .tenantName(c.getTenant().getFullName())
-                .tenantPhone(c.getTenant().getPhone())
-                .tenantAvatar(c.getTenant().getAvatarUrl())
-                .roomTitle(c.getRoom().getTitle())
-                .startDate(c.getStartDate())
-                .endDate(c.getEndDate())
-                .status("ACTIVE")
-                .build()
-        ).toList();
+        List<LandlordCustomerDTO> contractCustomers = contracts.stream().map(c -> {
+
+            List<Bill> billEntities = billRepository.findByContractId(c.getId());
+
+            List<LandlordCustomerDTO.BillSummaryDTO> billDtos = billEntities.stream()
+                    .map(b -> LandlordCustomerDTO.BillSummaryDTO.builder()
+                            .id(b.getId())
+                            .month(b.getMonth())
+                            .year(b.getYear())
+                            .electricOld(b.getElectricOld())
+                            .electricNew(b.getElectricNew())
+                            .waterOld(b.getWaterOld())
+                            .waterNew(b.getWaterNew())
+                            .totalAmount(b.getTotalAmount())
+                            .status(b.getStatus().name())
+                            .build())
+                    .toList();
+
+            return LandlordCustomerDTO.builder()
+                    .contractId(c.getId())
+                    .tenantId(c.getTenant().getId())
+                    .tenantName(c.getTenant().getFullName())
+                    .roomId(c.getRoom().getId())
+                    .tenantEmail(c.getTenant().getEmail())
+                    .tenantPhone(c.getTenant().getPhone())
+                    .tenantAvatar(c.getTenant().getAvatarUrl())
+                    .roomTitle(c.getRoom().getTitle())
+                    .startDate(c.getStartDate())
+                    .endDate(c.getEndDate())
+                    .status("ACTIVE")
+
+                    // 🟢 FIX LỖI THÔNG TIN RỖNG: Map các trường tiền và dịch vụ
+                    .monthlyRent(c.getMonthlyRent())
+                    .depositAmount(c.getDepositAmount())
+                    .electricPrice(c.getElectricPrice())
+                    .waterPrice(c.getWaterPrice())
+                    .serviceFees(c.getServiceFees())
+
+                    // 🟢 THÔNG TIN HÓA ĐƠN
+                    .bills(billDtos)
+                    .build();
+        }).toList();
 
         result.addAll(contractCustomers);
 
@@ -175,6 +205,8 @@ public class ContractServiceImpl implements ContractService {
                 .map(a -> LandlordCustomerDTO.builder()
                         .contractId(null)
                         .tenantId(a.getTenant().getId())
+                        .roomId(a.getRoom().getId()) // 👈 THÊM DÒNG NÀY
+                        .tenantEmail(a.getTenant().getEmail())
                         .tenantName(a.getTenant().getFullName())
                         .tenantPhone(a.getTenant().getPhone())
                         .tenantAvatar(a.getTenant().getAvatarUrl())

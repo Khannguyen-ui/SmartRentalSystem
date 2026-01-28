@@ -128,6 +128,32 @@ public class RoomController {
         Pageable pageable = PageRequest.of(page, size);
         return ResponseEntity.ok(roomService.getRoomsWithVideo(pageable));
     }
+    // 8. Đẩy tin (Gia hạn) - Khớp với roomService.pushRoom
+    @PostMapping("/{id}/push")
+    public ResponseEntity<?> pushRoom(
+            @PathVariable Long id,
+            @RequestParam Long packageId) {
+        roomService.pushRoomToTop(id, packageId);
+        return ResponseEntity.ok("Đẩy tin thành công");
+    }
+
+    // 9. Cập nhật trạng thái tin (Khớp với roomService.updateRoomStatus)
+    @PutMapping("/{id}/status")
+    public ResponseEntity<?> updateRoomStatus(
+            @PathVariable Long id,
+            @RequestParam String status) {
+        roomService.updateRoomStatus(id, status);
+        return ResponseEntity.ok("Cập nhật trạng thái thành công");
+    }
+
+    // 10. Bật/Tắt tự động gia hạn (Khớp với roomService.toggleAutoRenew)
+    @PutMapping("/{id}/auto-renew")
+    public ResponseEntity<?> toggleAutoRenew(
+            @PathVariable Long id,
+            @RequestParam boolean enable) {
+        roomService.toggleAutoRenew(id, enable);
+        return ResponseEntity.ok("Cập nhật tự động gia hạn thành công");
+    }
 
 
 }
