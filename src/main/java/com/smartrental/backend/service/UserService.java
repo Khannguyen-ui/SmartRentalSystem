@@ -17,4 +17,5 @@ public interface UserService {
     void upgradeToLandlord();
     void submitKyc(KycRequestDTO dto);
     LandlordPublicProfileDTO getLandlordPublicProfile(Long landlordId);
+
 }

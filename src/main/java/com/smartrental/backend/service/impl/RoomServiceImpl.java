@@ -11,12 +11,16 @@ import com.smartrental.backend.repository.RoomRepository;
 import com.smartrental.backend.repository.ServicePackageRepository;
 import com.smartrental.backend.repository.UserRepository;
 import com.smartrental.backend.service.RoomService;
+import jakarta.persistence.EntityManager;      // <--- MỚI
+import jakarta.persistence.PersistenceContext; // <--- MỚI
+import jakarta.persistence.Query;              // <--- MỚI
 import lombok.RequiredArgsConstructor;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.PrecisionModel;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl; // <--- MỚI
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -36,6 +40,10 @@ public class RoomServiceImpl implements RoomService {
     private final RoomMapper roomMapper;
     private final ServicePackageRepository servicePackageRepository;
 
+    // 🟢 1. Inject EntityManager để chạy query động
+    @PersistenceContext
+    private EntityManager entityManager;
+
     // Cấu hình Geometry để lưu tọa độ
     private final GeometryFactory geometryFactory = new GeometryFactory(new PrecisionModel(), 4326);
 
@@ -54,7 +62,7 @@ public class RoomServiceImpl implements RoomService {
             throw new RuntimeException("Chỉ chủ trọ mới được đăng tin!");
         }
 
-        // 2. Lấy thông tin gói cước để biết số ngày được phép hiển thị
+        // Lấy thông tin gói cước
         var servicePackage = servicePackageRepository.findById(dto.getServicePackageId())
                 .orElseThrow(() -> new RuntimeException("Gói dịch vụ không tồn tại"));
 
@@ -68,7 +76,7 @@ public class RoomServiceImpl implements RoomService {
                 .area(dto.getArea())
                 .address(dto.getAddress())
                 .servicePackageId(dto.getServicePackageId())
-                .packageType(servicePackage.getName()) // Lưu: "Hội viên Vàng", "VIP",...
+                .packageType(servicePackage.getName())
                 .priorityLevel(servicePackage.getPriorityLevel())
                 .rentalType(dto.getRentalType())
                 .capacity(dto.getCapacity())
@@ -85,41 +93,32 @@ public class RoomServiceImpl implements RoomService {
                 .amenities(dto.getAmenities())
                 .videoUrl(dto.getVideoUrl())
                 .status(Room.Status.PENDING)
-
-                // Cập nhật: Ngày hết hạn = Hôm nay + số ngày của gói cước
                 .expirationDate(LocalDateTime.now().plusDays(servicePackage.getDurationDays()))
-
                 .landlord(landlord)
                 .build();
 
         return roomMapper.toResponse(roomRepository.save(room));
     }
 
-    // --- LOGIC CẬP NHẬT PHÒNG (MỚI) ---
     @Override
     @Transactional
     public RoomResponseDTO updateRoom(Long id, RoomUpdateDTO dto) {
-        // 1. Tìm phòng
         Room room = roomRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Phòng không tồn tại"));
 
-        // 2. Xác định người dùng và quyền hạn
         User currentUser = getCurrentUser();
         boolean isOwner = room.getLandlord().getId().equals(currentUser.getId());
         boolean isAdmin = currentUser.getRole() == User.Role.ADMIN;
 
-        // Kiểm tra quyền sở hữu
         if (!isOwner && !isAdmin) {
             throw new RuntimeException("Bạn không có quyền chỉnh sửa phòng này");
         }
 
-        // 3. LOGIC MỚI: Chỉ cho phép sửa khi chưa được duyệt (PENDING hoặc REJECTED)
-        // Nếu là Admin thì vẫn cho sửa thoải mái (tùy bạn quyết định, ở đây mình để Admin toàn quyền)
         if (!isAdmin && room.getStatus() == Room.Status.APPROVED) {
-            throw new RuntimeException("Tin đăng đã được duyệt và đang hiển thị. Bạn không thể chỉnh sửa! Hãy ẩn tin hoặc xóa đi đăng lại.");
+            throw new RuntimeException("Tin đăng đã được duyệt. Hãy ẩn tin đi rồi sửa.");
         }
 
-        // 4. Cập nhật thông tin (Phần còn lại giữ nguyên)
+        // Cập nhật các trường thông tin nếu có gửi lên
         if (dto.getTitle() != null) room.setTitle(dto.getTitle());
         if (dto.getDescription() != null) room.setDescription(dto.getDescription());
         if (dto.getPrice() != null) room.setPrice(dto.getPrice());
@@ -137,20 +136,15 @@ public class RoomServiceImpl implements RoomService {
         if (dto.getGenderConstraint() != null) room.setGenderConstraint(dto.getGenderConstraint());
         if (dto.getVideoUrl() != null) room.setVideoUrl(dto.getVideoUrl());
 
-        if (dto.getAmenities() != null) {
-            room.setAmenities(dto.getAmenities());
-        }
+        if (dto.getAmenities() != null) room.setAmenities(dto.getAmenities());
+        if (dto.getImages() != null) room.setImages(dto.getImages());
 
-        if (dto.getImages() != null) {
-            room.setImages(dto.getImages());
-        }
-
+        // CHỈ CẬP NHẬT TỌA ĐỘ KHI CÓ CẢ LAT VÀ LNG
         if (dto.getLatitude() != null && dto.getLongitude() != null) {
             Point point = geometryFactory.createPoint(new Coordinate(dto.getLongitude(), dto.getLatitude()));
             room.setLocation(point);
         }
 
-        // Nếu phòng đang bị TỪ CHỐI (REJECTED), khi sửa xong thì chuyển lại thành PENDING để Admin duyệt lại
         if (room.getStatus() == Room.Status.REJECTED) {
             room.setStatus(Room.Status.PENDING);
         }
@@ -160,11 +154,7 @@ public class RoomServiceImpl implements RoomService {
 
     @Override
     public Page<RoomResponseDTO> searchNearby(double lat, double lng, double radius, String keyword, Pageable pageable) {
-        // 1. Gọi Repository kèm pageable
-        Page<Room> rooms = roomRepository.findRoomsNearby(lat, lng, radius, keyword, pageable);
-
-        // 2. Sử dụng method map của Page để chuyển đổi Entity sang DTO
-        return rooms.map(roomMapper::toResponse);
+        return roomRepository.findRoomsNearby(lat, lng, radius, keyword, pageable).map(roomMapper::toResponse);
     }
 
     @Override
@@ -174,22 +164,17 @@ public class RoomServiceImpl implements RoomService {
                 .stream().map(roomMapper::toResponse).collect(Collectors.toList());
     }
 
-    // --- LOGIC XÓA PHÒNG (CẬP NHẬT) ---
     @Override
     public void deleteRoom(Long id) {
         Room room = roomRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Phòng không tồn tại"));
-
         User currentUser = getCurrentUser();
-
-        // Cho phép ADMIN xóa hoặc Chủ trọ sở hữu phòng xóa
         boolean isOwner = room.getLandlord().getId().equals(currentUser.getId());
         boolean isAdmin = currentUser.getRole() == User.Role.ADMIN;
 
         if (!isOwner && !isAdmin) {
             throw new RuntimeException("Bạn không có quyền xóa phòng này");
         }
-
         roomRepository.delete(room);
     }
 
@@ -199,16 +184,13 @@ public class RoomServiceImpl implements RoomService {
                 .orElseThrow(() -> new RuntimeException("Phòng không tồn tại"));
         return roomMapper.toResponse(room);
     }
+
     @Override
     public List<RoomResponseDTO> getRoomsByLandlord(Long landlordId) {
-        // 1. Lấy tất cả phòng của chủ trọ từ DB
         List<Room> rooms = roomRepository.findByLandlordId(landlordId);
-
-        // 2. Lọc và Convert sang DTO
         return rooms.stream()
-                .filter(r -> r.getStatus() == Room.Status.ACTIVE || r.getStatus() == Room.Status.FULL) // Chỉ lấy Active hoặc Full
+                .filter(r -> r.getStatus() == Room.Status.ACTIVE || r.getStatus() == Room.Status.FULL)
                 .map(roomMapper::toResponse)
-                // Sắp xếp: ACTIVE lên trước, sau đó đến mới nhất
                 .sorted((r1, r2) -> {
                     if (r1.getStatus().equals(r2.getStatus())) {
                         return r2.getCreatedAt().compareTo(r1.getCreatedAt());
@@ -217,19 +199,15 @@ public class RoomServiceImpl implements RoomService {
                 })
                 .collect(Collectors.toList());
     }
+
     @Override
     public Page<RoomResponseDTO> getRoomsWithVideo(Pageable pageable) {
         return roomRepository.findAllWithVideo(pageable).map(roomMapper::toResponse);
     }
 
-    // =====================================================================
-    //          CÁC HÀM MỚI (ĐÃ SỬA LẠI GET/SET WALLET BALANCE)
-    // =====================================================================
-
     @Override
     @Transactional
     public void pushRoomToTop(Long roomId, Long packageId) {
-        // 1. Tìm Phòng & Gói cước
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new RuntimeException("Phòng không tồn tại"));
 
@@ -238,38 +216,29 @@ public class RoomServiceImpl implements RoomService {
 
         User landlord = room.getLandlord();
 
-        // 2. Kiểm tra số dư ví (Sửa getAccountBalance -> getWalletBalance)
         if (landlord.getWalletBalance() == null || landlord.getWalletBalance().compareTo(pkg.getPrice()) < 0) {
             throw new RuntimeException("Số dư tài khoản không đủ (" + pkg.getPrice() + " đ). Vui lòng nạp thêm!");
         }
 
-        // 3. Trừ tiền (Sửa setAccountBalance -> setWalletBalance)
         landlord.setWalletBalance(landlord.getWalletBalance().subtract(pkg.getPrice()));
         userRepository.save(landlord);
 
-        // 4. Cập nhật thông tin Phòng
-        room.setServicePackageId(pkg.getId()); // Cập nhật ID gói
-        room.setPriorityLevel(pkg.getPriorityLevel()); // Cập nhật độ ưu tiên hiển thị
-        room.setPackageType(pkg.getName()); // Lưu tên gói
+        room.setServicePackageId(pkg.getId());
+        room.setPriorityLevel(pkg.getPriorityLevel());
+        room.setPackageType(pkg.getName());
 
-        // Reset thời hạn tin = Thời điểm hiện tại + Số ngày của gói
-        // Logic cộng dồn (Khuyên dùng)
         if (room.getStatus() == Room.Status.ACTIVE &&
                 room.getExpirationDate() != null &&
                 room.getExpirationDate().isAfter(LocalDateTime.now())) {
-            // Nếu còn hạn thì cộng tiếp vào đuôi
             room.setExpirationDate(room.getExpirationDate().plusDays(pkg.getDurationDays()));
         } else {
-            // Nếu hết hạn thì tính từ bây giờ
             room.setExpirationDate(LocalDateTime.now().plusDays(pkg.getDurationDays()));
         }
         room.setLastPushedAt(LocalDateTime.now());
 
-        // Nếu tin đang bị Ẩn hoặc Hết hạn -> Chuyển sang ACTIVE ngay
         if (room.getStatus() == Room.Status.HIDDEN || room.getStatus() == Room.Status.EXPIRED) {
             room.setStatus(Room.Status.ACTIVE);
         }
-
         roomRepository.save(room);
     }
 
@@ -278,12 +247,10 @@ public class RoomServiceImpl implements RoomService {
     public void toggleAutoRenew(Long roomId, boolean enable) {
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new RuntimeException("Phòng không tồn tại"));
-
         User currentUser = getCurrentUser();
         if (!room.getLandlord().getId().equals(currentUser.getId())) {
             throw new RuntimeException("Bạn không có quyền cài đặt phòng này");
         }
-
         room.setAutoRenew(enable);
         roomRepository.save(room);
     }
@@ -293,25 +260,117 @@ public class RoomServiceImpl implements RoomService {
     public void updateRoomStatus(Long roomId, String statusStr) {
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new RuntimeException("Phòng không tồn tại"));
-
         User currentUser = getCurrentUser();
         if (!room.getLandlord().getId().equals(currentUser.getId()) && currentUser.getRole() != User.Role.ADMIN) {
             throw new RuntimeException("Không có quyền");
         }
-
         try {
             Room.Status newStatus = Room.Status.valueOf(statusStr.toUpperCase());
-
-            // Logic chặn: Không cho chuyển sang ACTIVE nếu đã hết hạn
             if (newStatus == Room.Status.ACTIVE &&
                     (room.getExpirationDate() == null || room.getExpirationDate().isBefore(LocalDateTime.now()))) {
                 throw new RuntimeException("Tin đã hết hạn, vui lòng Đẩy tin (Gia hạn) trước khi kích hoạt lại.");
             }
-
             room.setStatus(newStatus);
             roomRepository.save(room);
         } catch (IllegalArgumentException e) {
             throw new RuntimeException("Trạng thái không hợp lệ: " + statusStr);
         }
     }
+
+    // 🟢 2. CẬP NHẬT LOGIC TÌM KIẾM NÂNG CAO TRỰC TIẾP TẠI ĐÂY
+    @Override
+    public Page<RoomResponseDTO> searchNearbyAdvanced(
+            Double lat, Double lng, Double radius,
+            String keyword, String type,
+            BigDecimal minPrice, BigDecimal maxPrice,
+            Double minArea, Double maxArea,
+            List<Integer> bedroomList, List<Integer> bathroomList,
+            List<String> directionList, String furniture,
+            Pageable pageable) {
+
+        // 1. Xây dựng SQL cơ bản
+        StringBuilder sql = new StringBuilder("SELECT r.* FROM rooms r " +
+                "LEFT JOIN service_package sp ON r.service_package_id = sp.id " +
+                "WHERE r.status = 'ACTIVE' AND r.expiration_date >= NOW() ");
+
+        // 🔴 FIX LỖI "HIỆN TẤT CẢ": Chia radius cho 111319 để đổi MÉT -> ĐỘ
+        if (lat != null && lng != null && radius != null && radius > 0) {
+            sql.append(" AND ST_DWithin(r.location, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326), :radius / 111319) ");
+        }
+
+        // Full Text Search
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            sql.append(" AND r.search_vector @@ plainto_tsquery('simple', :keyword) ");
+        }
+
+        // Các bộ lọc khác (Giữ nguyên)
+        if (type != null && !type.equals("ALL") && !type.isEmpty()) sql.append(" AND r.rental_type = :type ");
+        if (minPrice != null) sql.append(" AND r.price >= :minPrice ");
+        if (maxPrice != null) sql.append(" AND r.price <= :maxPrice ");
+        if (minArea != null) sql.append(" AND r.area >= :minArea ");
+        if (maxArea != null) sql.append(" AND r.area <= :maxArea ");
+        if (bedroomList != null && !bedroomList.isEmpty()) sql.append(" AND r.num_bedrooms IN (:bedroomList) ");
+        if (bathroomList != null && !bathroomList.isEmpty()) sql.append(" AND r.num_bathrooms IN (:bathroomList) ");
+        if (directionList != null && !directionList.isEmpty()) sql.append(" AND r.direction IN (:directionList) ");
+        if (furniture != null && !furniture.trim().isEmpty()) sql.append(" AND r.furniture_status = :furniture ");
+
+        // 2. Query Count
+        Query countQuery = entityManager.createNativeQuery("SELECT count(*) FROM (" + sql.toString() + ") as tmp");
+        setParameters(countQuery, lat, lng, radius, keyword, type, minPrice, maxPrice, minArea, maxArea, bedroomList, bathroomList, directionList, furniture);
+        int totalRows = ((Number) countQuery.getSingleResult()).intValue();
+
+        // 3. Query Data & Sắp xếp (Order By)
+        // 🟢 LOGIC SẮP XẾP THÔNG MINH:
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            // Ưu tiên 1: Độ khớp từ khóa
+            sql.append(" ORDER BY ts_rank(r.search_vector, plainto_tsquery('simple', :keyword)) DESC, ");
+        } else if (lat != null && lng != null) {
+            // Ưu tiên 1: Khoảng cách (nếu không tìm từ khóa)
+            sql.append(" ORDER BY ST_Distance(r.location, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)) ASC, ");
+        } else {
+            // Mặc định
+            sql.append(" ORDER BY ");
+        }
+
+        // Ưu tiên 2: Tin VIP -> Tin mới đẩy -> Tin mới tạo
+        sql.append(" COALESCE(sp.priority_level, 0) DESC, r.last_pushed_at DESC NULLS LAST, r.created_at DESC ");
+
+        Query query = entityManager.createNativeQuery(sql.toString(), Room.class);
+        setParameters(query, lat, lng, radius, keyword, type, minPrice, maxPrice, minArea, maxArea, bedroomList, bathroomList, directionList, furniture);
+
+        // Phân trang
+        query.setFirstResult((int) pageable.getOffset());
+        query.setMaxResults(pageable.getPageSize());
+
+        List<Room> rooms = query.getResultList();
+
+        return new PageImpl<>(rooms.stream().map(roomMapper::toResponse).collect(Collectors.toList()), pageable, totalRows);
+    }
+
+    private void setParameters(Query query, Double lat, Double lng, Double radius, String keyword, String type,
+                               BigDecimal minPrice, BigDecimal maxPrice, Double minArea, Double maxArea,
+                               List<Integer> bedroomList, List<Integer> bathroomList, List<String> directionList, String furniture) {
+
+        if (lat != null && lng != null && radius != null && radius > 0) {
+            query.setParameter("lat", lat);
+            query.setParameter("lng", lng);
+            query.setParameter("radius", radius);
+        }
+
+
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            query.setParameter("keyword", keyword.trim());
+        }
+
+        if (type != null && !type.equals("ALL") && !type.isEmpty()) query.setParameter("type", type);
+        if (minPrice != null) query.setParameter("minPrice", minPrice);
+        if (maxPrice != null) query.setParameter("maxPrice", maxPrice);
+        if (minArea != null) query.setParameter("minArea", minArea);
+        if (maxArea != null) query.setParameter("maxArea", maxArea);
+        if (bedroomList != null && !bedroomList.isEmpty()) query.setParameter("bedroomList", bedroomList);
+        if (bathroomList != null && !bathroomList.isEmpty()) query.setParameter("bathroomList", bathroomList);
+        if (directionList != null && !directionList.isEmpty()) query.setParameter("directionList", directionList);
+        if (furniture != null && !furniture.trim().isEmpty()) query.setParameter("furniture", furniture);
+    }
 }
+

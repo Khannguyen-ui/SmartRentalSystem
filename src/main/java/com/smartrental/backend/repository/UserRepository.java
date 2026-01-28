@@ -18,10 +18,11 @@ public interface    UserRepository extends JpaRepository<User, Long> {
             "FROM users u " +
             "JOIN rooms r ON u.id = r.landlord_id " +
             "WHERE r.status = 'ACTIVE' " +
-            "AND ST_DWithin(r.location, ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326), :radius) " +
+            "AND ST_DWithin(r.location, ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326), :radius / 111319) " + // 🟢 THÊM PHẦN CHIA NÀY
             "GROUP BY u.id, u.full_name, u.avatar_url " +
             "ORDER BY post_count DESC",
             nativeQuery = true)
+
     List<Object[]> findTopLandlordsNearbyRaw(
             @Param("latitude") double latitude,
             @Param("longitude") double longitude,
