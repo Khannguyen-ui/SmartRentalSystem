@@ -33,6 +33,7 @@ public class ChatServiceImpl {
     private final NotificationService notificationService;
 
 
+
     private User getCurrentUser() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         return userRepository.findByEmail(email)
@@ -89,6 +90,7 @@ public class ChatServiceImpl {
                 NotificationType.CHAT_NEW,
                 sender.getId() // referenceId là ID người gửi để FE biết bấm vào thì mở chat với ai
         );
+
         return savedMessage;
     }
 

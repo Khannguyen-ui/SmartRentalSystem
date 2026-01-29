@@ -1,32 +1,24 @@
 # Giai đoạn 1: Build ứng dụng
-# Sử dụng Maven và OpenJDK 21 (đúng với java.version trong pom.xml của bạn)
 FROM maven:3.9.6-eclipse-temurin-21 AS build
-
 WORKDIR /app
 
-# Copy file pom.xml để tải thư viện trước (tối ưu cache)
+# Copy pom.xml và tải dependency trước để tận dụng cache
 COPY pom.xml .
-# Tải toàn bộ dependency (bao gồm Cloudinary, VNPay, JWT, v.v.)
 RUN mvn dependency:go-offline -B
 
-# Copy toàn bộ mã nguồn src
+# Copy mã nguồn và build
 COPY src ./src
-
-# Build ra file .jar (Bỏ qua test để chạy nhanh hơn)
 RUN mvn clean package -DskipTests
 
-# Giai đoạn 2: Chạy ứng dụng
-# Sử dụng JRE 21 bản nhẹ (Alpine) để chạy
+# Giai đoạn 2: Runtime
 FROM eclipse-temurin:21-jre-alpine
-
 WORKDIR /app
 
-# Copy file .jar từ giai đoạn build sang
-# File jar sẽ có tên backend-0.0.1-SNAPSHOT.jar dựa theo artifactId trong pom.xml
+# Copy file jar từ stage build
 COPY --from=build /app/target/*.jar app.jar
 
-# Mở cổng 8080
+# Port mặc định của Spring Boot
 EXPOSE 8080
 
-# Lệnh chạy ứng dụng
-ENTRYPOINT ["java", "-jar", "app.jar"]
+# Chạy với múi giờ Việt Nam (Quan trọng cho tính năng đặt lịch)
+ENTRYPOINT ["java", "-Duser.timezone=Asia/Ho_Chi_Minh", "-jar", "app.jar"]
