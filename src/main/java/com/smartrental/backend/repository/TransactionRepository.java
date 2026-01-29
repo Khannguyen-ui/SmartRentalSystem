@@ -10,7 +10,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
 
     // Tìm lịch sử giao dịch của 1 user (sắp xếp mới nhất lên đầu)
     List<Transaction> findByUserIdOrderByCreatedAtDesc(Long userId);
-
+    long countByUserIdAndStatus(Long userId, String status);
 
 
     boolean existsByVnpayCode(String vnpayCode);

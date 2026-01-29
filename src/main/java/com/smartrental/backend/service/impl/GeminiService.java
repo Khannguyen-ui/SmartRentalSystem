@@ -3,7 +3,12 @@ package com.smartrental.backend.service.impl;
 import com.smartrental.backend.dto.gemini.GeminiRequest;
 import com.smartrental.backend.dto.gemini.GeminiResponse;
 import com.smartrental.backend.entity.Room;
+import com.smartrental.backend.entity.ServicePackage;
+import com.smartrental.backend.entity.PriceTrend;
 import com.smartrental.backend.repository.RoomRepository;
+import com.smartrental.backend.repository.ServicePackageRepository;
+import com.smartrental.backend.repository.PriceTrendRepository;
+import com.smartrental.backend.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
@@ -12,6 +17,8 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.List;
 
@@ -26,20 +33,21 @@ public class GeminiService {
     private String apiUrl;
 
     private final RoomRepository roomRepository;
+    private final ServicePackageRepository packageRepository;
+    private final PriceTrendRepository priceTrendRepository;
+    private final TransactionRepository transactionRepository;
     private final RestTemplate restTemplate = new RestTemplate();
 
     public String getConsultation(String userQuestion) {
 
-        // 1. Lấy phòng ACTIVE
         List<Room> activeRooms = roomRepository.findByStatus(Room.Status.ACTIVE);
+        List<ServicePackage> activePackages = packageRepository.findByActiveTrue();
+        List<PriceTrend> priceTrends = priceTrendRepository.findAll();
 
-        if (activeRooms.isEmpty()) {
-            return "Hiện tại hệ thống chưa có phòng trống. Bạn quay lại sau nhé 🏠";
+        if (activeRooms.isEmpty() && activePackages.isEmpty()) {
+            return "Hiện tại hệ thống chưa có dữ liệu phòng hoặc gói cước. Bạn quay lại sau nhé 🏠";
         }
 
-        // ==================================================
-        // 🔥 PHẦN QUAN TRỌNG: KHÔNG HIỂU CÂU HỎI – CHỈ ĐƯA DỮ LIỆU
-        // ==================================================
         String q = userQuestion.toLowerCase();
 
         boolean isCompareQuestion =
@@ -51,27 +59,32 @@ public class GeminiService {
                         || q.contains("wc")
                         || q.contains("diện tích")
                         || q.contains("khu vực")
-                        || q.contains("chủ trọ");
+                        || q.contains("chủ trọ")
+                        || q.contains("gói")
+                        || q.contains("đăng bài")
+                        || q.contains("nạp tiền")
+                        || q.contains("gần")
+                        || q.contains("trường")
+                        || q.contains("bệnh viện")
+                        || q.contains("uy tín")
+                        || q.contains("tin tưởng")
+                        || q.contains("hợp lý");
 
 
         List<Room> contextRooms;
 
         if (isCompareQuestion) {
-            // 👉 Câu hỏi cần suy luận → đưa nhiều dữ liệu cho AI
             contextRooms = activeRooms.stream()
-                    .limit(15)   // đủ để AI so sánh
+                    .limit(10)
                     .toList();
         } else {
-            // 👉 Câu hỏi bình thường
             contextRooms = activeRooms.stream()
                     .limit(5)
                     .toList();
         }
 
-        // 2. Build prompt
-        String prompt = buildPrompt(contextRooms, userQuestion);
+        String prompt = buildPrompt(contextRooms, activePackages, priceTrends, userQuestion);
 
-        // 3. Build request body
         GeminiRequest request = new GeminiRequest(
                 Collections.singletonList(
                         new GeminiRequest.Content(
@@ -83,7 +96,6 @@ public class GeminiService {
         );
 
         try {
-            // 4. Headers
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             headers.set("x-goog-api-key", apiKey.trim());
@@ -92,7 +104,6 @@ public class GeminiService {
 
             System.out.println(">>> GEMINI CALLING URL: " + apiUrl.trim());
 
-            // 5. Call Gemini API
             GeminiResponse response = restTemplate.postForObject(
                     apiUrl.trim(),
                     entity,
@@ -123,69 +134,66 @@ public class GeminiService {
         }
     }
 
-    // ==================================================
-    // 🔥 PROMPT: AI TỰ SUY LUẬN – KHÔNG HARD-CODE
-    // ==================================================
-    private String buildPrompt(List<Room> rooms, String question) {
+    private String buildPrompt(List<Room> rooms, List<ServicePackage> packages, List<PriceTrend> trends, String question) {
         StringBuilder sb = new StringBuilder();
 
         sb.append("""
-Bạn là trợ lý AI của hệ thống Smart Rental.
-Nhiệm vụ của bạn là tư vấn phòng trọ dựa trên DỮ LIỆU THỰC TẾ bên dưới.
+Bạn là trợ lý AI của hệ thống Smart Rental. Trả lời đúng trọng tâm, ngắn gọn và TRỰC QUAN.
+Nhiệm vụ của bạn là tư vấn dựa trên dữ liệu thực tế bên dưới.
 
-NGUYÊN TẮC BẮT BUỘC:
-- CHỈ sử dụng thông tin trong danh sách phòng
-- KHÔNG bịa phòng, giá, khu vực
-- KHÔNG suy đoán ngoài dữ liệu
-- Nếu không có phòng phù hợp → nói rõ là không có
+QUY TẮC QUAN TRỌNG:
+1. HÌNH ẢNH: Luôn hiển thị ảnh đại diện của phòng bằng cú pháp Markdown: ![Tên phòng](URL_Ảnh).
+2. HIỂN THỊ: Gắn link Markdown cho phòng [Tên phòng](link) và chủ trọ [Tên chủ trọ](link).
+3. TÌM KIẾM VỊ TRÍ: Phân tích địa chỉ/tọa độ để tìm phòng gần trường học, bệnh viện theo yêu cầu.
+4. ĐÁNH GIÁ UY TÍN: Dựa vào số giao dịch thành công của chủ trọ để tư vấn mức độ tin tưởng.
+5. ĐÁNH GIÁ GIÁ CẢ: So sánh giá phòng với dữ liệu "Xu hướng giá khu vực" để biết giá có hợp lý/tốt hay không.
+6. BẢN ĐỒ: Luôn cung cấp link "Xem trên bản đồ" cho mỗi phòng.
 
-KHẢ NĂNG SUY LUẬN:
-- KHU VỰC: suy luận từ ĐỊA CHỈ (ví dụ: Thủ Đức, Quận 7, gần trường, gần KCN…)
-- GIÁ: so sánh rẻ nhất / đắt nhất / trong khoảng
-- XU HƯỚNG GIÁ: nếu nhiều phòng cùng khu vực có giá cao/thấp → nhận xét chung
-- DIỆN TÍCH: lớn / nhỏ / trên – dưới X m²
-- PHÒNG NGỦ / WC: nếu có trong mô tả hoặc tiện ích
-- CHỦ TRỌ: nếu thông tin thể hiện là chính chủ, căn hộ, nhà trọ
-
-CÁCH TRẢ LỜI:
-- Ưu tiên phòng PHÙ HỢP NHẤT
-- Có thể liệt kê 1–3 phòng
-- Ngắn gọn, rõ ràng, thân thiện
-- Emoji dùng vừa phải 🏠✨
-
-DANH SÁCH PHÒNG:
+DỮ LIỆU GIÁ THỊ TRƯỜNG (XU HƯỚNG GIÁ):
 """);
-
-        for (Room r : rooms) {
-            String price = (r.getPrice() != null) ? r.getPrice().toPlainString() : "Thương lượng";
-            String amenities = (r.getAmenities() != null && !r.getAmenities().isEmpty())
-                    ? String.join(", ", r.getAmenities())
-                    : "Cơ bản";
-
-            sb.append(String.format("""
-[ID: %d] %s
-- Giá: %s VNĐ
-- Diện tích: %.1f m2
-- Địa chỉ: %s
-- Tiện ích / Mô tả: %s
-
-""",
-                    r.getId(),
-                    r.getTitle(),
-                    price,
-                    r.getArea(),
-                    r.getAddress(),
-                    amenities
-            ));
+        for (PriceTrend t : trends) {
+            sb.append(String.format("- Khu vực %s: Trung bình %s VNĐ (Thấp nhất: %s, Cao nhất: %s)\n",
+                    t.getAreaCenter(), t.getAvgPrice(), t.getMinPrice(), t.getMaxPrice()));
         }
 
-        sb.append("""
+        sb.append("\nDANH SÁCH GÓI DỊCH VỤ:\n");
+        for (ServicePackage pkg : packages) {
+            sb.append(String.format("- Gói %s: Giá %s VNĐ. [Xem chi tiết gói](http://localhost:5173/packages/%d)\n",
+                    pkg.getName(), pkg.getPrice().toPlainString(), pkg.getId()));
+        }
+
+        sb.append("\nDANH SÁCH PHÒNG HIỆN CÓ:\n");
+        for (Room r : rooms) {
+            String price = (r.getPrice() != null) ? r.getPrice().toPlainString() : "Thương lượng";
+            long successDeals = transactionRepository.countByUserIdAndStatus(r.getLandlord().getId(), "SUCCESS");
+            String encodedAddress = URLEncoder.encode(r.getAddress(), StandardCharsets.UTF_8);
+            String googleMapsLink = "https://www.google.com/maps/search/?api=1&query=" + encodedAddress;
+
+            // Lấy URL ảnh đầu tiên của phòng
+            String imageUrl = (r.getImages() != null && !r.getImages().isEmpty())
+                    ? r.getImages().get(0)
+                    : "https://res.cloudinary.com/dfyrnocnr/image/upload/v1/default-room";
+
+            sb.append(String.format("""
+![%s](%s)
+### **[%s](http://localhost:5173/rooms/%d)**
+- Giá: %s VNĐ | Diện tích: %.1f m2
+- Địa chỉ: %s
+- ĐỘ UY TÍN: Chủ trọ đã có %d giao dịch thành công.
+- Bản đồ: [📍 Nhấn để xem vị trí trên Google Maps](%s)
+- Chủ trọ: [%s](http://localhost:5173/users/public-profile/%d)
 ---
-CÂU HỎI KHÁCH HÀNG:
-""");
+""",
+                    r.getTitle(), imageUrl,
+                    r.getTitle(), r.getId(),
+                    price, r.getArea(), r.getAddress(),
+                    successDeals, googleMapsLink,
+                    r.getLandlord().getFullName(), r.getLandlord().getId()));
+        }
+
+        sb.append("\n---\nCÂU HỎI KHÁCH HÀNG: ");
         sb.append(question);
 
         return sb.toString();
     }
-
 }
