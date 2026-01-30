@@ -13,14 +13,10 @@ import java.util.List;
 @Repository
 public interface PriceTrendRepository extends JpaRepository<PriceTrend, Long> {
 
-    /**
-     * 1. Tìm xu hướng giá trong bán kính xung quanh tọa độ của phòng.
-     * Đã thêm GROUP BY theo tháng/năm để đảm bảo biểu đồ chỉ hiển thị 1 điểm dữ liệu duy nhất mỗi tháng.
-     */
     @Query("SELECT new com.smartrental.backend.dto.response.PriceHistoryDTO(" +
             "concat('T', t.month, '/', substr(cast(t.year as string), 3, 2)), " +
             "MAX(t.maxPrice), " +
-            "CAST(AVG(t.avgPrice) AS big_decimal), " + // 👈 Thêm CAST ở đây
+            "AVG(t.avgPrice), " +
             "MIN(t.minPrice)) " +
             "FROM PriceTrend t " +
             "WHERE function('ST_DWithin', t.areaCenter, :roomLocation, :radius) = true " +
@@ -30,12 +26,9 @@ public interface PriceTrendRepository extends JpaRepository<PriceTrend, Long> {
     List<PriceHistoryDTO> findNearbyTrends(
             @Param("roomLocation") Point roomLocation,
             @Param("radius") double radius,
-            @Param("type") com.smartrental.backend.entity.Room.RentalType type);
+            @Param("type") String type   // ✅ STRING
+    );
 
-    /**
-     * 2. [MỚI] Kiểm tra xem tại vị trí này (bán kính 500m) đã có bản ghi thống kê cho tháng này chưa.
-     * Hàm này được sử dụng trong Background Job để tránh tính toán trùng lặp cho cùng một khu vực.
-     */
     @Query(value = "SELECT EXISTS(SELECT 1 FROM price_trends " +
             "WHERE month = :month AND year = :year AND rental_type = :type " +
             "AND ST_DWithin(area_center, :point, 500))", nativeQuery = true)

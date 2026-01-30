@@ -49,9 +49,10 @@ public class PriceStatisticsServiceImpl implements PriceStatisticsService {
         // 2. Lấy danh sách lịch sử từ Repository
         List<PriceHistoryDTO> history = trendRepository.findNearbyTrends(
                 room.getLocation(),
-                0.02,
-                room.getRentalType()
+                2000.0,              // ✅ 2km
+                trendRentalType      // ✅ SHARED / WHOLE
         );
+
 
         // 3. Đóng gói vào đối tượng Response mới
         return PriceTrendResponse.builder()
@@ -88,7 +89,7 @@ public class PriceStatisticsServiceImpl implements PriceStatisticsService {
                         .minPrice(new BigDecimal(stats.get("min_p").toString()))
                         .avgPrice(new BigDecimal(stats.get("avg_p").toString()))
                         .maxPrice(new BigDecimal(stats.get("max_p").toString()))
-                        .rentalType(room.getRentalType())
+                        .rentalType(trendRentalType)
                         .build();
                 trendRepository.save(trend);
             }

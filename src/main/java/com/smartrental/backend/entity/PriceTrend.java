@@ -26,6 +26,7 @@ public class PriceTrend {
     private BigDecimal avgPrice;
     private BigDecimal maxPrice;
 
-    @Enumerated(EnumType.STRING)
-    private Room.RentalType rentalType; // WHOLE hoặc SHARED [cite: 592]
+    @Column(name = "rental_type")
+    private String rentalType;   // CHỈ: SHARED | WHOLE
+    // WHOLE hoặc SHARED [cite: 592]
 }
