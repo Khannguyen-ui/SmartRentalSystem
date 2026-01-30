@@ -29,7 +29,7 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
                         // 2. Các API công khai hoàn toàn
-                        .requestMatchers("/api/auth/**", "/api/payment/**", "/error", "/ws/**").permitAll()
+                        .requestMatchers("/api/auth/**", "/api/payment/**","/", "/error", "/ws/**").permitAll()
                         .requestMatchers("/api/ai/**").permitAll()
                         // 3. Cho phép xem công khai (Review và Room)
                         .requestMatchers(HttpMethod.GET, "/api/rooms/**").permitAll()
