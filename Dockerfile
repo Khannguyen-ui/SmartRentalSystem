@@ -23,4 +23,5 @@ COPY --from=build /app/target/*.jar app.jar
 
 EXPOSE 8080
 
-ENTRYPOINT ["java","-jar","app.jar"]
+# Thêm giới hạn RAM (ví dụ Max 80% RAM của container hoặc fix cứng 512m)
+ENTRYPOINT ["java", "-Xmx512m", "-jar", "app.jar"]
