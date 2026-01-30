@@ -47,15 +47,13 @@ public class ChatController {
     // 2. HTTP REST API (THÊM MỚI ĐỂ SỬA LỖI 404)
     // ========================================================================
 
-    // API: Lấy lịch sử chat với một người
-    // GET http://localhost:8080/api/chat/history/{partnerId}
+
     @GetMapping("/history/{partnerId}")
     public ResponseEntity<List<ChatMessageResponse>> getChatHistory(@PathVariable Long partnerId) {
         return ResponseEntity.ok(chatService.getChatHistory(partnerId));
     }
 
-    // API: Gửi tin nhắn qua HTTP (Fallback hoặc dùng cho Mobile/Postman)
-    // POST http://localhost:8080/api/chat/send
+
     @PostMapping("/send")
     public ResponseEntity<ChatMessageResponse> sendMessage(@RequestBody ChatMessageDTO dto) {
         // 1. Lưu tin nhắn

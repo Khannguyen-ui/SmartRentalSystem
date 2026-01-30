@@ -87,16 +87,19 @@ public class PaymentController {
                         );
                     }
 
-                    response.sendRedirect("http://localhost:5173/payment-success?status=success&amount="
+                    response.sendRedirect("https://bdsforntend-production.up.railway.app" +
+                            "/payment-success?status=success&amount="
                             + amount.toPlainString() + "&txnRef=" + transactionId);
                     return;
                 }
             } catch (Exception e) {
                 e.printStackTrace();
-                response.sendRedirect("http://localhost:5173/payment-failed");
+                response.sendRedirect("https://bdsforntend-production.up.railway.app" +
+                        "/payment-failed");
                 return;
             }
         }
-        response.sendRedirect("http://localhost:5173/payment-failed");
+        response.sendRedirect("https://bdsforntend-production.up.railway.app" +
+                "/payment-failed");
     }
 }

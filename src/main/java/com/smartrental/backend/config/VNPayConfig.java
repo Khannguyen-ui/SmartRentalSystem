@@ -12,7 +12,9 @@ public class VNPayConfig {
     public static String vnp_PayUrl = "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html";
 
 
-    public static String vnp_ReturnUrl = "http://localhost:8080/api/payment/vnpay-return";
+    public static String vnp_ReturnUrl =
+            "https://smartrentalsystem-production.up.railway.app/api/payment/vnpay-return";
+
 
     public static String vnp_TmnCode = "OB95XN6Y"; // Mã Website của bạn
     public static String vnp_HashSecret = "GLT1V41JVEREAQXWLVQXAS86C3CKPWXD"; // Chuỗi bí mật

@@ -227,7 +227,7 @@ public class UserServiceImpl implements UserService {
 
         tokenRepository.save(resetToken);
 
-        String resetLink = "http://localhost:5173/reset-password?token=" + token;
+        String resetLink = "https://bdsforntend-production.up.railway.app/reset-password?token=" + token;
         sendEmail(user.getEmail(), "Đặt lại mật khẩu - Smart Rental",
                 "Vui lòng nhấn vào link sau để thay đổi mật khẩu (có hiệu lực trong 60 phút): " + resetLink);
     }

@@ -12,7 +12,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        // Endpoint để Client kết nối vào: ws://localhost:8080/ws
+
         registry.addEndpoint("/ws")
                 .setAllowedOriginPatterns("*") // Cho phép React Native/Web kết nối
                 .withSockJS(); // Fallback nếu không hỗ trợ WS thuần

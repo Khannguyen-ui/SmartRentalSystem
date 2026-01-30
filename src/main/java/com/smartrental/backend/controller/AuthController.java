@@ -19,16 +19,14 @@ public class AuthController {
 
     private final UserService userService;
 
-    // 1. API Đăng ký
-    // URL: http://localhost:8080/api/auth/register
+
     @PostMapping("/register")
     public ResponseEntity<UserResponseDTO> register(@RequestBody @Valid UserRegisterDTO registerDTO) {
         UserResponseDTO newUser = userService.register(registerDTO);
         return ResponseEntity.ok(newUser);
     }
 
-    // 2. API Đăng nhập
-    // URL: http://localhost:8080/api/auth/login
+
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@RequestBody @Valid LoginDTO loginDTO) {
         AuthResponse response = userService.login(loginDTO);
