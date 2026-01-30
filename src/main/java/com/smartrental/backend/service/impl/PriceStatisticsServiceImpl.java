@@ -25,16 +25,6 @@ public class PriceStatisticsServiceImpl implements PriceStatisticsService {
 
     private final RoomRepository roomRepository;
     private final PriceTrendRepository trendRepository;
-    private String mapRoomTypeToTrendType(String roomRentalType) {
-        if (roomRentalType == null) return null;
-
-        return switch (roomRentalType) {
-            case "PHONG_TRO", "SHARED_ROOM", "ROOM" -> "SHARED";
-            case "NGUYEN_CAN", "HOUSE", "WHOLE_HOUSE" -> "WHOLE";
-            default -> roomRentalType;
-        };
-    }
-
 
     @Override
     public PriceTrendResponse getPriceHistoryForRoom(Long roomId) {
@@ -42,17 +32,12 @@ public class PriceStatisticsServiceImpl implements PriceStatisticsService {
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy phòng"));
 
-        String trendRentalType = mapRoomTypeToTrendType(
-                room.getRentalType().name()
-        );
-
         // 2. Lấy danh sách lịch sử từ Repository
         List<PriceHistoryDTO> history = trendRepository.findNearbyTrends(
                 room.getLocation(),
-                2000.0,              // ✅ 2km
-                trendRentalType      // ✅ SHARED / WHOLE
+                0.02,
+                room.getRentalType()
         );
-
 
         // 3. Đóng gói vào đối tượng Response mới
         return PriceTrendResponse.builder()
@@ -71,9 +56,6 @@ public class PriceStatisticsServiceImpl implements PriceStatisticsService {
         List<Room> roomsToProcess = roomRepository.findRoomsNeedingTrendUpdate(month, year);
 
         for (Room room : roomsToProcess) {
-            String trendRentalType = mapRoomTypeToTrendType(
-                    room.getRentalType().name()
-            );
             // Bước 2: Vì SQL đã lọc rồi, ở đây chúng ta tính toán luôn không cần check exists nữa
             Map<String, Object> stats = roomRepository.calculateStatsAroundPoint(
                     room.getLocation(),
@@ -89,11 +71,10 @@ public class PriceStatisticsServiceImpl implements PriceStatisticsService {
                         .minPrice(new BigDecimal(stats.get("min_p").toString()))
                         .avgPrice(new BigDecimal(stats.get("avg_p").toString()))
                         .maxPrice(new BigDecimal(stats.get("max_p").toString()))
-                        .rentalType(trendRentalType)
+                        .rentalType(room.getRentalType())
                         .build();
                 trendRepository.save(trend);
             }
         }
-
     }
 }
