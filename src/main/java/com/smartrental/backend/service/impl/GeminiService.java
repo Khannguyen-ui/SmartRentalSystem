@@ -158,7 +158,7 @@ DỮ LIỆU GIÁ THỊ TRƯỜNG (XU HƯỚNG GIÁ):
 
         sb.append("\nDANH SÁCH GÓI DỊCH VỤ:\n");
         for (ServicePackage pkg : packages) {
-            sb.append(String.format("- Gói %s: Giá %s VNĐ. [Xem chi tiết gói](http://localhost:5173/packages/%d)\n",
+            sb.append(String.format("- Gói %s: Giá %s VNĐ. [Xem chi tiết gói](https://smartrentalsystem-production.up.railway.app/packages/%d)\n",
                     pkg.getName(), pkg.getPrice().toPlainString(), pkg.getId()));
         }
 
@@ -176,12 +176,12 @@ DỮ LIỆU GIÁ THỊ TRƯỜNG (XU HƯỚNG GIÁ):
 
             sb.append(String.format("""
 ![%s](%s)
-### **[%s](http://localhost:5173/rooms/%d)**
+### **[%s](https://smartrentalsystem-production.up.railway.app/rooms/%d)**
 - Giá: %s VNĐ | Diện tích: %.1f m2
 - Địa chỉ: %s
 - ĐỘ UY TÍN: Chủ trọ đã có %d giao dịch thành công.
 - Bản đồ: [📍 Nhấn để xem vị trí trên Google Maps](%s)
-- Chủ trọ: [%s](http://localhost:5173/users/public-profile/%d)
+- Chủ trọ: [%s](https://smartrentalsystem-production.up.railway.app/users/public-profile/%d)
 ---
 """,
                     r.getTitle(), imageUrl,
